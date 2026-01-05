@@ -5,6 +5,9 @@ import { useParams, Link } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
 import { ArrowLeft, MapPin, Calendar, Tag, User, MessageSquare, Share2, Lock, CreditCard, Check } from "lucide-react"
 import { useLanguage } from "../contexts/LanguageContext"
+import { useAuth } from "../contexts/AuthContext"
+import { supabase } from "../lib/supabase"
+import OwnershipVerification from '../components/OwnershipVerification'
 
 // Mock data - sera remplacé par Supabase
 const mockItem = {
@@ -22,25 +25,56 @@ const mockItem = {
     joinedDate: "2024-06-15",
     itemsReported: 5,
   },
+  proofData: {
+    brand: "Apple",
+    model: "iPhone 14 Pro",
+    color: "Noir",
+    screenCondition: "Intact",
+    caseColor: "Bleu",
+    wallpaper: "Photo de montagne",
+    uniqueMarks: "Autocollant Pokemon à l'arrière"
+  }
 }
 
 export default function ItemDetailPage() {
   const { id } = useParams()
   const { t } = useLanguage()
+  const { user } = useAuth()
   const [selectedImage, setSelectedImage] = useState(0)
   const [showContactForm, setShowContactForm] = useState(false)
-  const [hasPaid, setHasPaid] = useState(false)
-  const [showPaymentModal, setShowPaymentModal] = useState(false)
-  const [isProcessingPayment, setIsProcessingPayment] = useState(false)
+  const [hasAccess, setHasAccess] = useState(false)
+  const [showVerification, setShowVerification] = useState(false)
 
-  const handlePayment = async () => {
-    setIsProcessingPayment(true)
-    // Simulate payment processing
-    setTimeout(() => {
-      setHasPaid(true)
-      setShowPaymentModal(false)
-      setIsProcessingPayment(false)
-    }, 2000)
+  const handleUnlockClick = () => {
+    setShowVerification(true)
+  }
+
+  const handleVerificationComplete = async (success, score) => {
+    if (success) {
+      try {
+        // Enregistrer l'accès vérifié
+        const { error } = await supabase.from('verified_access').insert({
+          item_id: mockItem.id,
+          user_id: user?.id,
+          verification_score: score,
+          payment_status: 'completed',
+          payment_date: new Date().toISOString()
+        })
+
+        if (error) {
+          console.error('Erreur lors de l\'enregistrement:', error)
+          alert('Erreur lors de la validation. Veuillez réessayer.')
+          return
+        }
+
+        setHasAccess(true)
+        setShowVerification(false)
+        alert('✅ Accès débloqué avec succès !')
+      } catch (err) {
+        console.error('Erreur:', err)
+        alert('Une erreur est survenue. Veuillez réessayer.')
+      }
+    }
   }
 
   return (
@@ -59,15 +93,15 @@ export default function ItemDetailPage() {
               <img
                 src={mockItem.images[selectedImage] || "/placeholder.svg"}
                 alt={mockItem.title}
-                className={`w-full h-96 object-cover transition-all ${!hasPaid ? "blur-lg" : ""}`}
+                className={`w-full h-96 object-cover transition-all ${!hasAccess ? "blur-lg" : ""}`}
                 crossOrigin="anonymous"
               />
-              {!hasPaid && (
+              {!hasAccess && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm">
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    onClick={() => setShowPaymentModal(true)}
+                    onClick={handleUnlockClick}
                     className="px-8 py-4 bg-primary text-primary-foreground rounded-xl font-semibold glow-primary flex items-center gap-3"
                   >
                     <Lock size={20} />
@@ -110,7 +144,7 @@ export default function ItemDetailPage() {
                 </span>
               </div>
 
-              <p className={`text-muted-foreground leading-relaxed mb-6 ${!hasPaid ? "blur-sm select-none" : ""}`}>
+              <p className={`text-muted-foreground leading-relaxed mb-6 ${!hasAccess ? "blur-sm select-none" : ""}`}>
                 {mockItem.description}
               </p>
 
@@ -120,10 +154,10 @@ export default function ItemDetailPage() {
                   <span className="font-semibold text-foreground">{t("category")}:</span>
                   <span>{mockItem.category}</span>
                 </div>
-                <div className={`flex items-center gap-3 text-muted-foreground ${!hasPaid ? "blur-sm" : ""}`}>
+                <div className={`flex items-center gap-3 text-muted-foreground ${!hasAccess ? "blur-sm" : ""}`}>
                   <MapPin size={20} className="text-primary" />
                   <span className="font-semibold text-foreground">{t("location")}:</span>
-                  <span>{hasPaid ? mockItem.location : "••••••••"}</span>
+                  <span>{hasAccess ? mockItem.location : "••••••••"}</span>
                 </div>
                 <div className="flex items-center gap-3 text-muted-foreground">
                   <Calendar size={20} className="text-primary" />
@@ -134,10 +168,10 @@ export default function ItemDetailPage() {
 
               <div className="flex gap-3">
                 <button
-                  onClick={() => (hasPaid ? setShowContactForm(!showContactForm) : setShowPaymentModal(true))}
+                  onClick={() => (hasAccess ? setShowContactForm(!showContactForm) : handleUnlockClick())}
                   className="flex-1 px-6 py-3 bg-primary text-primary-foreground rounded-xl font-semibold glow-primary hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
                 >
-                  {hasPaid ? (
+                  {hasAccess ? (
                     <>
                       <MessageSquare size={20} />
                       {t("contact")}
@@ -224,6 +258,33 @@ export default function ItemDetailPage() {
         </div>
       </div>
 
+      {/* Modal de vérification */}
+      <AnimatePresence>
+        {showVerification && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto"
+            onClick={() => setShowVerification(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="w-full max-w-4xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <OwnershipVerification 
+                item={mockItem}
+                onVerificationComplete={handleVerificationComplete}
+                onClose={() => setShowVerification(false)}
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+{/* 
       <AnimatePresence>
         {showPaymentModal && (
           <motion.div
@@ -302,7 +363,7 @@ export default function ItemDetailPage() {
             </motion.div>
           </motion.div>
         )}
-      </AnimatePresence>
+      </AnimatePresence> */}
     </div>
-  )
+  );
 }

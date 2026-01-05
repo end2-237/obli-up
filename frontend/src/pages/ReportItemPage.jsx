@@ -1,94 +1,125 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { motion, AnimatePresence } from "framer-motion"
-import { useNavigate } from "react-router-dom"
-import { Upload, MapPin, Calendar, ArrowRight, ArrowLeft, Check, X } from "lucide-react"
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
+import {
+  Upload,
+  MapPin,
+  Calendar,
+  ArrowRight,
+  ArrowLeft,
+  Check,
+  X,
+} from "lucide-react";
+import SecureProofFields from "../components/SecureProofFields";
 
-const categories = ["Électronique", "Bagagerie", "Clés", "Accessoires", "Vêtements", "Documents", "Autre"]
+const categories = [
+  "Électronique",
+  "Bagagerie",
+  "Clés",
+  "Accessoires",
+  "Vêtements",
+  "Documents",
+  "Autre",
+];
 
 const steps = [
   { id: 1, title: "Type d'objet", description: "Informations de base" },
   { id: 2, title: "Description", description: "Détails importants" },
   { id: 3, title: "Localisation", description: "Où et quand" },
   { id: 4, title: "Photos", description: "Images de l'objet" },
-]
+];
 
 export default function ReportItemPage() {
-  const navigate = useNavigate()
-  const [currentStep, setCurrentStep] = useState(1)
+  const navigate = useNavigate();
+  const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({
-    type: "lost", // lost or found
+    type: "lost",
     title: "",
     category: "",
     description: "",
     location: "",
     date: "",
     images: [],
-  })
-  const [previewImages, setPreviewImages] = useState([])
+    proofData: {}, // NOUVEAU
+    proofFieldsConfig: [], // NOUVEAU
+  });
+  const [previewImages, setPreviewImages] = useState([]);
 
   const handleInputChange = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
-  }
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
 
   const handleImageUpload = (e) => {
-    const files = Array.from(e.target.files)
-    const newPreviews = files.map((file) => URL.createObjectURL(file))
-    setPreviewImages((prev) => [...prev, ...newPreviews])
-    setFormData((prev) => ({ ...prev, images: [...prev.images, ...files] }))
-  }
+    const files = Array.from(e.target.files);
+    const newPreviews = files.map((file) => URL.createObjectURL(file));
+    setPreviewImages((prev) => [...prev, ...newPreviews]);
+    setFormData((prev) => ({ ...prev, images: [...prev.images, ...files] }));
+  };
 
   const removeImage = (index) => {
-    setPreviewImages((prev) => prev.filter((_, i) => i !== index))
+    setPreviewImages((prev) => prev.filter((_, i) => i !== index));
     setFormData((prev) => ({
       ...prev,
       images: prev.images.filter((_, i) => i !== index),
-    }))
-  }
+    }));
+  };
 
   const handleNext = () => {
     if (currentStep < steps.length) {
-      setCurrentStep(currentStep + 1)
+      setCurrentStep((prev) => prev + 1);
     }
-  }
+  };
 
   const handleBack = () => {
     if (currentStep > 1) {
-      setCurrentStep(currentStep - 1)
+      setCurrentStep((prev) => prev - 1);
     }
-  }
+  };
 
   const handleSubmit = (e) => {
-    e.preventDefault()
-    console.log("Form submitted:", formData)
-    // Ici on intégrera Supabase
-    navigate("/dashboard")
-  }
+    e.preventDefault();
+  
+    if (currentStep !== steps.length) {
+      return;
+    }
+  
+    console.log("Form submitted:", formData);
+    navigate("/dashboard");
+  };
 
   const isStepValid = () => {
     switch (currentStep) {
       case 1:
-        return formData.title && formData.category
+        return formData.title && formData.category;
       case 2:
-        return formData.description.length >= 20
+        return formData.description.length >= 20;
       case 3:
-        return formData.location && formData.date
+        return formData.location && formData.date;
       case 4:
-        return true // Photos optionnelles
+        return formData.images.length > 0;
       default:
-        return false
+        return false;
     }
-  }
+  };
 
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
       <div className="bg-gradient-to-br from-primary/10 to-secondary/10 border-b border-border">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
-            <h1 className="text-4xl sm:text-5xl font-bold mb-4">Déclarer un Objet</h1>
-            <p className="text-lg text-muted-foreground">Aidez-nous à retrouver ou restituer cet objet</p>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+          >
+            <h1 className="text-4xl sm:text-5xl font-bold mb-4">
+              Déclarer un Objet
+            </h1>
+            <p className="text-lg text-muted-foreground">
+              Aidez-nous à retrouver ou restituer cet objet
+            </p>
           </motion.div>
         </div>
       </div>
@@ -105,20 +136,24 @@ export default function ReportItemPage() {
                       currentStep > step.id
                         ? "bg-primary text-primary-foreground"
                         : currentStep === step.id
-                          ? "bg-primary text-primary-foreground glow-primary"
-                          : "bg-muted text-muted-foreground"
+                        ? "bg-primary text-primary-foreground glow-primary"
+                        : "bg-muted text-muted-foreground"
                     }`}
                   >
                     {currentStep > step.id ? <Check size={20} /> : step.id}
                   </div>
                   <div className="mt-2 text-center hidden sm:block">
                     <div className="text-sm font-semibold">{step.title}</div>
-                    <div className="text-xs text-muted-foreground">{step.description}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {step.description}
+                    </div>
                   </div>
                 </div>
                 {index < steps.length - 1 && (
                   <div
-                    className={`h-0.5 flex-1 transition-colors ${currentStep > step.id ? "bg-primary" : "bg-muted"}`}
+                    className={`h-0.5 flex-1 transition-colors ${
+                      currentStep > step.id ? "bg-primary" : "bg-muted"
+                    }`}
                   />
                 )}
               </div>
@@ -139,7 +174,9 @@ export default function ReportItemPage() {
                 className="space-y-6"
               >
                 <div className="glass rounded-2xl p-6">
-                  <h2 className="text-2xl font-bold mb-6">Type de déclaration</h2>
+                  <h2 className="text-2xl font-bold mb-6">
+                    Type de déclaration
+                  </h2>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                     <button
@@ -152,8 +189,12 @@ export default function ReportItemPage() {
                       }`}
                     >
                       <div className="text-2xl mb-2">😢</div>
-                      <div className="font-semibold mb-1">J'ai perdu un objet</div>
-                      <div className="text-sm text-muted-foreground">Déclarer un objet que vous avez perdu</div>
+                      <div className="font-semibold mb-1">
+                        J'ai perdu un objet
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        Déclarer un objet que vous avez perdu
+                      </div>
                     </button>
 
                     <button
@@ -166,18 +207,26 @@ export default function ReportItemPage() {
                       }`}
                     >
                       <div className="text-2xl mb-2">🎉</div>
-                      <div className="font-semibold mb-1">J'ai trouvé un objet</div>
-                      <div className="text-sm text-muted-foreground">Signaler un objet que vous avez trouvé</div>
+                      <div className="font-semibold mb-1">
+                        J'ai trouvé un objet
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        Signaler un objet que vous avez trouvé
+                      </div>
                     </button>
                   </div>
 
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-semibold mb-2">Nom de l'objet *</label>
+                      <label className="block text-sm font-semibold mb-2">
+                        Nom de l'objet *
+                      </label>
                       <input
                         type="text"
                         value={formData.title}
-                        onChange={(e) => handleInputChange("title", e.target.value)}
+                        onChange={(e) =>
+                          handleInputChange("title", e.target.value)
+                        }
                         placeholder="Ex: iPhone 14 Pro, Sac à dos noir..."
                         className="w-full px-4 py-3 bg-input border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-foreground"
                         required
@@ -185,13 +234,17 @@ export default function ReportItemPage() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-semibold mb-2">Catégorie *</label>
+                      <label className="block text-sm font-semibold mb-2">
+                        Catégorie *
+                      </label>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                         {categories.map((category) => (
                           <button
                             key={category}
                             type="button"
-                            onClick={() => handleInputChange("category", category)}
+                            onClick={() =>
+                              handleInputChange("category", category)
+                            }
                             className={`px-4 py-3 rounded-xl transition-all ${
                               formData.category === category
                                 ? "bg-primary text-primary-foreground"
@@ -217,7 +270,9 @@ export default function ReportItemPage() {
                 exit={{ opacity: 0, x: -20 }}
                 className="glass rounded-2xl p-6"
               >
-                <h2 className="text-2xl font-bold mb-6">Description détaillée</h2>
+                <h2 className="text-2xl font-bold mb-6">
+                  Description détaillée
+                </h2>
 
                 <div>
                   <label className="block text-sm font-semibold mb-2">
@@ -225,7 +280,9 @@ export default function ReportItemPage() {
                   </label>
                   <textarea
                     value={formData.description}
-                    onChange={(e) => handleInputChange("description", e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange("description", e.target.value)
+                    }
                     rows={8}
                     placeholder="Décrivez l'objet avec le maximum de détails : couleur, marque, signes distinctifs, état..."
                     className="w-full px-4 py-3 bg-input border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-foreground resize-none"
@@ -233,6 +290,19 @@ export default function ReportItemPage() {
                   />
                   <div className="mt-2 text-sm text-muted-foreground">
                     {formData.description.length} / 20 caractères minimum
+                  </div>
+
+                  <div className="mt-6">
+                    <SecureProofFields
+                      category={formData.category}
+                      onProofDataChange={(proofData, config) => {
+                        setFormData((prev) => ({
+                          ...prev,
+                          proofData,
+                          proofFieldsConfig: config,
+                        }));
+                      }}
+                    />
                   </div>
                 </div>
               </motion.div>
@@ -258,13 +328,16 @@ export default function ReportItemPage() {
                     <input
                       type="text"
                       value={formData.location}
-                      onChange={(e) => handleInputChange("location", e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange("location", e.target.value)
+                      }
                       placeholder="Ex: Paris 15ème - Métro Dupleix"
                       className="w-full px-4 py-3 bg-input border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-foreground"
                       required
                     />
                     <p className="mt-2 text-sm text-muted-foreground">
-                      Soyez aussi précis que possible pour faciliter la recherche
+                      Soyez aussi précis que possible pour faciliter la
+                      recherche
                     </p>
                   </div>
 
@@ -276,7 +349,9 @@ export default function ReportItemPage() {
                     <input
                       type="date"
                       value={formData.date}
-                      onChange={(e) => handleInputChange("date", e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange("date", e.target.value)
+                      }
                       max={new Date().toISOString().split("T")[0]}
                       className="w-full px-4 py-3 bg-input border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-foreground"
                       required
@@ -308,9 +383,16 @@ export default function ReportItemPage() {
                       className="hidden"
                     />
                     <label htmlFor="image-upload" className="cursor-pointer">
-                      <Upload className="mx-auto mb-4 text-muted-foreground" size={48} />
-                      <p className="text-lg font-semibold mb-2">Ajouter des photos</p>
-                      <p className="text-sm text-muted-foreground">Glissez-déposez ou cliquez pour sélectionner</p>
+                      <Upload
+                        className="mx-auto mb-4 text-muted-foreground"
+                        size={48}
+                      />
+                      <p className="text-lg font-semibold mb-2">
+                        Ajouter des photos
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Glissez-déposez ou cliquez pour sélectionner
+                      </p>
                     </label>
                   </div>
 
@@ -375,5 +457,5 @@ export default function ReportItemPage() {
         </form>
       </div>
     </div>
-  )
+  );
 }

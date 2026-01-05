@@ -46,3 +46,31 @@ CREATE INDEX IF NOT EXISTS messages_receiver_id_idx ON messages(receiver_id);
 ALTER TABLE items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE item_images ENABLE ROW LEVEL SECURITY;
 ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
+
+
+-- Ajouter les champs de vérification
+ALTER TABLE items ADD COLUMN proof_data JSONB;
+ALTER TABLE items ADD COLUMN proof_fields_config JSONB;
+ALTER TABLE items ADD COLUMN verification_required BOOLEAN DEFAULT true;
+
+-- Table pour stocker les tentatives de vérification
+CREATE TABLE verification_attempts (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  item_id UUID REFERENCES items(id),
+  user_id UUID REFERENCES auth.users(id),
+  answers JSONB NOT NULL,
+  score INTEGER,
+  success BOOLEAN,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Table pour les paiements validés
+CREATE TABLE verified_access (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  item_id UUID REFERENCES items(id),
+  user_id UUID REFERENCES auth.users(id),
+  verification_score INTEGER,
+  payment_status TEXT,
+  payment_date TIMESTAMP,
+  created_at TIMESTAMP DEFAULT NOW()
+);
