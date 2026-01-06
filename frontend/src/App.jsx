@@ -14,6 +14,7 @@ import AuthPage from "./pages/AuthPage"
 import QRStorePage from "./pages/QRStorePage"
 import QRScannerPage from "./pages/QRScannerPage"
 import ChatPage from "./pages/ChatPage"
+import QRStorePageNew from "./pages/QRStorePageNew"
 
 function App() {
   return (

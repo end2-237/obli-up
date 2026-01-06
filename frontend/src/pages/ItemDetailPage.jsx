@@ -8,7 +8,7 @@ import { useLanguage } from "../contexts/LanguageContext"
 import { useAuth } from "../contexts/AuthContext"
 import { supabase } from "../lib/supabase"
 import OwnershipVerification from '../components/OwnershipVerification'
-
+import {useNavigate} from "react-router-dom"
 // Mock data - sera remplacé par Supabase
 const mockItem = {
   id: 1,
@@ -37,6 +37,7 @@ const mockItem = {
 }
 
 export default function ItemDetailPage() {
+  const navigate = useNavigate()
   const { id } = useParams()
   const { t } = useLanguage()
   const { user } = useAuth()
@@ -53,19 +54,19 @@ export default function ItemDetailPage() {
     if (success) {
       try {
         // Enregistrer l'accès vérifié
-        const { error } = await supabase.from('verified_access').insert({
-          item_id: mockItem.id,
-          user_id: user?.id,
-          verification_score: score,
-          payment_status: 'completed',
-          payment_date: new Date().toISOString()
-        })
+        // const { error } = await supabase.from('verified_access').insert({
+        //   item_id: mockItem.id,
+        //   user_id: user?.id,
+        //   verification_score: score,
+        //   payment_status: 'completed',
+        //   payment_date: new Date().toISOString()
+        // })
 
-        if (error) {
-          console.error('Erreur lors de l\'enregistrement:', error)
-          alert('Erreur lors de la validation. Veuillez réessayer.')
-          return
-        }
+        // if (error) {
+        //   console.error('Erreur lors de l\'enregistrement:', error)
+        //   alert('Erreur lors de la validation. Veuillez réessayer.')
+        //   return
+        // }
 
         setHasAccess(true)
         setShowVerification(false)
@@ -227,6 +228,13 @@ export default function ItemDetailPage() {
                     className="w-full px-6 py-3 bg-primary text-primary-foreground rounded-xl font-semibold hover:bg-primary/90 transition-colors"
                   >
                     Envoyer le message
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigate("/chat")}
+                    className="w-full px-6 py-3 bg-primary text-primary-foreground rounded-xl font-semibold hover:bg-primary/90 transition-colors"
+                  >
+                    Chat
                   </button>
                 </form>
               </motion.div>
