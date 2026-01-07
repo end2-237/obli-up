@@ -1,3 +1,4 @@
+// frontend/src/pages/ReportItemPage.jsx
 "use client";
 
 import { useState } from "react";
@@ -11,7 +12,10 @@ import {
   ArrowLeft,
   Check,
   X,
+  Loader2,
 } from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
+import { itemService } from "../services/itemService";
 import SecureProofFields from "../components/SecureProofFields";
 
 const categories = [
@@ -33,7 +37,11 @@ const steps = [
 
 export default function ReportItemPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [hasReviewedImagesStep, setHasReviewedImagesStep] = useState(false);
+
   const [formData, setFormData] = useState({
     type: "lost",
     title: "",
@@ -42,8 +50,8 @@ export default function ReportItemPage() {
     location: "",
     date: "",
     images: [],
-    proofData: {}, // NOUVEAU
-    proofFieldsConfig: [], // NOUVEAU
+    proofData: {},
+    proofFieldsConfig: [],
   });
   const [previewImages, setPreviewImages] = useState([]);
 
@@ -78,15 +86,40 @@ export default function ReportItemPage() {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-  
+
     if (currentStep !== steps.length) {
       return;
     }
-  
-    console.log("Form submitted:", formData);
-    navigate("/dashboard");
+
+    if (!user) {
+      alert("Vous devez être connecté pour déclarer un objet");
+      navigate("/auth");
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      // 1. Créer l'item
+      const newItem = await itemService.createItem(formData, user.id);
+
+      // 2. Upload des images si présentes
+      if (formData.images.length > 0) {
+        await itemService.uploadImages(newItem.id, formData.images);
+        navigate("/dashboard");
+      }
+
+      // Succès
+      alert("✅ Objet déclaré avec succès !");
+      
+    } catch (error) {
+      console.error("Erreur lors de la déclaration:", error);
+      alert("❌ Une erreur s'est produite. Veuillez réessayer.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const isStepValid = () => {
@@ -99,6 +132,9 @@ export default function ReportItemPage() {
         return formData.location && formData.date;
       case 4:
         return formData.images.length > 0;
+
+      // case 4:
+      //   return hasReviewedImagesStep;
       default:
         return false;
     }
@@ -414,6 +450,13 @@ export default function ReportItemPage() {
                           </button>
                         </div>
                       ))}
+                      {/* <button
+                        type="button"
+                        onClick={() => setHasReviewedImagesStep(true)}
+                        className="px-6 py-3 bg-primary text-primary-foreground rounded-xl font-semibold hover:bg-primary/90 transition-colors"
+                      >
+                        Continuer sans ajouter d’autres photos
+                      </button> */}
                     </div>
                   )}
                 </div>
@@ -426,7 +469,7 @@ export default function ReportItemPage() {
             <button
               type="button"
               onClick={handleBack}
-              disabled={currentStep === 1}
+              disabled={currentStep === 1 || loading}
               className="px-6 py-3 glass rounded-xl hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               <ArrowLeft size={20} />
@@ -437,7 +480,7 @@ export default function ReportItemPage() {
               <button
                 type="button"
                 onClick={handleNext}
-                disabled={!isStepValid()}
+                disabled={!isStepValid() || loading}
                 className="px-6 py-3 bg-primary text-primary-foreground rounded-xl font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 glow-primary"
               >
                 Suivant
@@ -446,11 +489,20 @@ export default function ReportItemPage() {
             ) : (
               <button
                 type="submit"
-                disabled={!isStepValid()}
+                disabled={loading}
                 className="px-8 py-3 bg-secondary text-secondary-foreground rounded-xl font-semibold hover:bg-secondary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 glow-secondary"
               >
-                <Check size={20} />
-                Publier la déclaration
+                {loading ? (
+                  <>
+                    <Loader2 className="animate-spin" size={20} />
+                    Publication...
+                  </>
+                ) : (
+                  <>
+                    <Check size={20} />
+                    Publier la déclaration
+                  </>
+                )}
               </button>
             )}
           </div>

@@ -5,6 +5,7 @@ import { Link } from "react-router-dom"
 import { MapPin, Calendar, Tag, ArrowRight } from "lucide-react"
 
 export default function ItemCard({ item, index, viewMode }) {
+  // if (item.image === null) console.log("aucune image");
   if (viewMode === "list") {
     return (
       <motion.div

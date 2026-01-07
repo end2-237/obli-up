@@ -1,5 +1,7 @@
+// frontend/src/pages/HomePage.jsx
 "use client";
 
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import {
@@ -11,12 +13,34 @@ import {
   QrCode,
   MessageSquare,
   Check,
+  Loader2,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import AnimatedBackground from "../components/AnimatedBackground";
+import ItemCard from "../components/ItemCard";
+import { itemService } from "../services/itemService";
 
 export default function HomePage() {
   const { t } = useTranslation();
+  const [recentItems, setRecentItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadRecentItems();
+  }, []);
+
+  const loadRecentItems = async () => {
+    try {
+      setLoading(true);
+      const items = await itemService.getAllItems({});
+      // Prendre seulement les 6 items les plus récents
+      setRecentItems(items.slice(0, 3));
+    } catch (error) {
+      console.error("Erreur lors du chargement des items:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const features = [
     {
@@ -135,13 +159,59 @@ export default function HomePage() {
         >
           <motion.div
             animate={{ y: [0, 8, 0] }}
-            transition={{ duration: 1.5, repeat: Number.POSITIVE_INFINITY }}
+            transition={{ duration: 1.5, repeat: Infinity }}
             className="w-6 h-10 border-2 border-muted rounded-full flex items-start justify-center p-2"
           >
             <div className="w-1 h-2 bg-primary rounded-full" />
           </motion.div>
         </motion.div>
       </section>
+
+      {/* Recent Items Section */}
+      {recentItems.length > 0 && (
+        <section className="py-24 bg-card/50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="text-center mb-12"
+            >
+              <h2 className="text-3xl sm:text-4xl font-bold mb-4">
+                Objets Récemment Déclarés
+              </h2>
+              <p className="text-muted-foreground">
+                Les derniers objets perdus et trouvés sur la plateforme
+              </p>
+            </motion.div>
+
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="animate-spin text-primary" size={48} />
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                {recentItems.map((item, index) => (
+                  <ItemCard key={item.id} item={item} index={index} viewMode="grid" />
+                ))}
+              </div>
+            )}
+
+            <div className="text-center">
+              <Link to="/items">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="px-8 py-4 bg-primary text-primary-foreground rounded-xl font-semibold hover:bg-primary/90 transition-colors inline-flex items-center gap-2"
+                >
+                  Voir tous les objets
+                  <ArrowRight size={20} />
+                </motion.button>
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Mission Section */}
       <section className="py-24 bg-card/50">

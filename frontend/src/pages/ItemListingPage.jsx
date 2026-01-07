@@ -1,89 +1,47 @@
+// frontend/src/pages/ItemListingPage.jsx
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
-import { Search, Filter, Grid, List } from "lucide-react"
+import { Search, Filter, Grid, List, Loader2 } from "lucide-react"
 import ItemCard from "../components/ItemCard"
-
-// Mock data - sera remplacé par Supabase
-const mockItems = [
-  {
-    id: 1,
-    title: "iPhone 14 Pro",
-    description: "Téléphone noir avec coque bleue",
-    category: "Électronique",
-    location: "Paris 15ème",
-    date: "2025-01-15",
-    status: "lost",
-    image: "/modern-smartphone.png",
-  },
-  {
-    id: 2,
-    title: "Sac à dos Noir",
-    description: "Sac Eastpak noir avec porte-clés rouge",
-    category: "Bagagerie",
-    location: "Lyon Centre",
-    date: "2025-01-14",
-    status: "found",
-    image: "/colorful-backpack-on-wooden-table.png",
-  },
-  {
-    id: 3,
-    title: "Clés de voiture",
-    description: "Trousseau avec badge Renault",
-    category: "Clés",
-    location: "Marseille",
-    date: "2025-01-13",
-    status: "found",
-    image: "/car-keys.png",
-  },
-  {
-    id: 4,
-    title: "Montre Connectée",
-    description: "Apple Watch Series 8 argent",
-    category: "Électronique",
-    location: "Toulouse",
-    date: "2025-01-12",
-    status: "lost",
-    image: "/apple-watch-lifestyle.png",
-  },
-  {
-    id: 5,
-    title: "Portefeuille Cuir",
-    description: "Portefeuille marron avec initiales JD",
-    category: "Accessoires",
-    location: "Bordeaux",
-    date: "2025-01-11",
-    status: "found",
-    image: "/leather-wallet.jpg",
-  },
-  {
-    id: 6,
-    title: "Lunettes de Soleil",
-    description: "Ray-Ban aviator dorées",
-    category: "Accessoires",
-    location: "Nice",
-    date: "2025-01-10",
-    status: "lost",
-    image: "/stylish-sunglasses.png",
-  },
-]
+import { itemService } from "../services/itemService"
 
 const categories = ["Tous", "Électronique", "Bagagerie", "Clés", "Accessoires", "Vêtements", "Documents"]
 
 export default function ItemListingPage() {
+  const [items, setItems] = useState([])
+  const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("Tous")
   const [viewMode, setViewMode] = useState("grid")
   const [showFilters, setShowFilters] = useState(false)
 
-  const filteredItems = mockItems.filter((item) => {
-    const matchesSearch =
-      item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.description.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesCategory = selectedCategory === "Tous" || item.category === selectedCategory
-    return matchesSearch && matchesCategory
-  })
+  // Charger les items au montage et quand les filtres changent
+  useEffect(() => {
+    loadItems()
+  }, [selectedCategory, searchQuery])
+
+  const loadItems = async () => {
+    async function testImages() {
+      const images = await itemService.getAllImages();
+      console.log("Liste complète des URLs d'images:", images.map(i => i.image_url));
+    }
+    
+    testImages();
+    try {
+      setLoading(true)
+      const data = await itemService.getAllItems({
+        category: selectedCategory,
+        search: searchQuery
+      })
+      setItems(data)
+    } catch (error) {
+      console.error('Erreur lors du chargement des items:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -174,19 +132,31 @@ export default function ItemListingPage() {
         {/* Results Count */}
         <div className="mb-6 flex items-center justify-between">
           <p className="text-muted-foreground">
-            {filteredItems.length} objet{filteredItems.length > 1 ? "s" : ""} trouvé
-            {filteredItems.length > 1 ? "s" : ""}
+            {loading ? (
+              <span className="flex items-center gap-2">
+                <Loader2 className="animate-spin" size={16} />
+                Chargement...
+              </span>
+            ) : (
+              <>
+                {items.length} objet{items.length > 1 ? "s" : ""} trouvé{items.length > 1 ? "s" : ""}
+              </>
+            )}
           </p>
         </div>
 
         {/* Items Grid/List */}
-        {filteredItems.length > 0 ? (
+        {loading ? (
+          <div className="flex items-center justify-center py-16">
+            <Loader2 className="animate-spin text-primary" size={48} />
+          </div>
+        ) : items.length > 0 ? (
           <div
             className={
               viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" : "flex flex-col gap-4"
             }
           >
-            {filteredItems.map((item, index) => (
+            {items.map((item, index) => (
               <ItemCard key={item.id} item={item} index={index} viewMode={viewMode} />
             ))}
           </div>
