@@ -25,7 +25,7 @@ export default function AuthPageWithReferral() {
     name: "",
   });
 
-  // Détecter le code de parrainage dans l'URL
+  // Detect parrainage code
   useEffect(() => {
     const refCode = searchParams.get('ref');
     if (refCode) {
