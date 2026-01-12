@@ -21,35 +21,35 @@ export default function OwnershipVerification({ item, onVerificationComplete, on
       { id: "uniqueMarks", label: "Y a-t-il des autocollants ou marques distinctives ?", type: "textarea", weight: 20 }
     ],
     "Bagagerie": [
-      { id: "type", label: "Type de sac", type: "select", options: ["Sac à dos", "Sac à main", "Valise", "Sacoche"], required: true },
-      { id: "brand", label: "Marque (si visible)", type: "text", required: false },
-      { id: "color", label: "Couleur principale", type: "text", required: true },
-      { id: "material", label: "Matière", type: "select", options: ["Cuir", "Tissu", "Synthétique", "Autre"], required: true },
-      { id: "pockets", label: "Nombre de poches", type: "number", required: true },
-      { id: "contents", label: "Contenu du sac (liste privée)", type: "textarea", required: true, private: true },
+      { id: "type", label: "Type de sac", type: "select", options: ["Sac à dos", "Sac à main", "Valise", "Sacoche"], required: true , weight: 15},
+      { id: "brand", label: "Marque (si visible)", type: "text", required: false , weight: 10},
+      { id: "color", label: "Couleur principale", type: "text", required: true , weight: 10},
+      { id: "material", label: "Matière", type: "select", options: ["Cuir", "Tissu", "Synthétique", "Autre"], required: true , weight: 10},
+      { id: "pockets", label: "Nombre de poches", type: "number", required: true , weight: 10},
+      { id: "contents", label: "Contenu du sac (liste privée)", type: "textarea", required: true, private: true , weight: 20},
       { id: "defects", label: "Défauts visibles (déchirures, taches)", type: "textarea", required: false }
     ],
     "Clés": [
-      { id: "keyType", label: "Type de clés", type: "select", options: ["Maison", "Voiture", "Bureau", "Cadenas"], required: true },
-      { id: "keyCount", label: "Nombre de clés sur le trousseau", type: "number", required: true },
-      { id: "keychain", label: "Description du porte-clés", type: "textarea", required: false },
-      { id: "carBrand", label: "Marque de voiture (si applicable)", type: "text", required: false },
-      { id: "attachedCards", label: "Cartes ou badges attachés", type: "textarea", required: false },
-      { id: "uniqueFeatures", label: "Caractéristiques uniques", type: "textarea", required: true, private: true }
+      { id: "keyType", label: "Type de clés", type: "select", options: ["Maison", "Voiture", "Bureau", "Cadenas"], required: true , weight: 15},
+      { id: "keyCount", label: "Nombre de clés sur le trousseau", type: "number", required: true , weight: 10},
+      { id: "keychain", label: "Description du porte-clés", type: "textarea", required: false , weight: 10},
+      { id: "carBrand", label: "Marque de voiture (si applicable)", type: "text", required: false , weight: 10},
+      { id: "attachedCards", label: "Cartes ou badges attachés", type: "textarea", required: false , weight: 10},
+      { id: "uniqueFeatures", label: "Caractéristiques uniques", type: "textarea", required: true, private: true , weight: 20}
     ],
     "Accessoires": [
-      { id: "type", label: "Type d'accessoire", type: "text", required: true },
-      { id: "brand", label: "Marque", type: "text", required: false },
-      { id: "color", label: "Couleur", type: "text", required: true },
-      { id: "material", label: "Matière", type: "text", required: true },
-      { id: "initials", label: "Initiales ou gravure", type: "text", required: false, private: true },
-      { id: "defects", label: "Défauts ou marques uniques", type: "textarea", required: false }
+      { id: "type", label: "Type d'accessoire", type: "text", required: true , weight: 15},
+      { id: "brand", label: "Marque", type: "text", required: false , weight: 10},
+      { id: "color", label: "Couleur", type: "text", required: true , weight: 10},
+      { id: "material", label: "Matière", type: "text", required: true , weight: 10},
+      { id: "initials", label: "Initiales ou gravure", type: "text", required: false, private: true , weight: 10},
+      { id: "defects", label: "Défauts ou marques uniques", type: "textarea", required: false , weight: 20}
     ],
     "Documents": [
-      { id: "docType", label: "Type de document", type: "select", options: ["Carte d'identité", "Passeport", "Permis", "Carte vitale", "Autre"], required: true },
-      { id: "country", label: "Pays émetteur", type: "text", required: true },
-      { id: "condition", label: "État du document", type: "select", options: ["Neuf", "Bon état", "Usagé", "Abîmé"], required: true },
-      { id: "envelope", label: "Dans une enveloppe/étui", type: "select", options: ["Oui", "Non"], required: false }
+      { id: "docType", label: "Type de document", type: "select", options: ["Carte d'identité", "Passeport", "Permis", "Carte vitale", "Autre"], required: true , weight: 15},
+      { id: "country", label: "Pays émetteur", type: "text", required: true , weight: 10},
+      { id: "condition", label: "État du document", type: "select", options: ["Neuf", "Bon état", "Usagé", "Abîmé"], required: true , weight: 10},
+      { id: "envelope", label: "Dans une enveloppe/étui", type: "select", options: ["Oui", "Non"], required: false , weight: 20}
     ]
   }
 
