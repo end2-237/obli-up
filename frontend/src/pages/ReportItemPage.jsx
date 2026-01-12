@@ -4,6 +4,8 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import { useRef } from "react";
+
 import {
   Upload,
   MapPin,
@@ -17,6 +19,7 @@ import {
 import { useAuth } from "../contexts/AuthContext";
 import { itemService } from "../services/itemService";
 import SecureProofFields from "../components/SecureProofFields";
+import SecureReportForm from "../components/SecureProofFields";
 
 const categories = [
   "Électronique",
@@ -41,6 +44,7 @@ export default function ReportItemPage() {
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [hasReviewedImagesStep, setHasReviewedImagesStep] = useState(false);
+  const isSubmittingRef = useRef(false);
 
   const [formData, setFormData] = useState({
     type: "lost",
@@ -88,6 +92,7 @@ export default function ReportItemPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmittingRef.current) return;
 
     if (currentStep !== steps.length) {
       return;
@@ -113,12 +118,12 @@ export default function ReportItemPage() {
 
       // Succès
       alert("✅ Objet déclaré avec succès !");
-      
     } catch (error) {
       console.error("Erreur lors de la déclaration:", error);
       alert("❌ Une erreur s'est produite. Veuillez réessayer.");
     } finally {
       setLoading(false);
+      isSubmittingRef.current = false;
     }
   };
 
@@ -132,7 +137,6 @@ export default function ReportItemPage() {
         return formData.location && formData.date;
       case 4:
         return formData.images.length > 0;
-
       // case 4:
       //   return hasReviewedImagesStep;
       default:
@@ -329,15 +333,21 @@ export default function ReportItemPage() {
                   </div>
 
                   <div className="mt-6">
-                    <SecureProofFields
+                    <SecureReportForm
                       category={formData.category}
-                      onProofDataChange={(proofData, config) => {
+                      proofData={formData.proofData}
+                      onCategoryChange={(cat) =>
+                        setFormData((prev) => ({ ...prev, category: cat }))
+                      }
+                      onProofConfigChange={(config) =>
                         setFormData((prev) => ({
                           ...prev,
-                          proofData,
                           proofFieldsConfig: config,
-                        }));
-                      }}
+                        }))
+                      }
+                      onProofDataChange={(data) =>
+                        setFormData((prev) => ({ ...prev, proofData: data }))
+                      }
                     />
                   </div>
                 </div>

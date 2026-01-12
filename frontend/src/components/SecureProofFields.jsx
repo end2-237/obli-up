@@ -46,24 +46,41 @@ const proofFieldsByCategory = {
   ]
 }
 
-export default function SecureReportForm() {
-  const [category, setCategory] = useState("")
-  const [proofFields, setProofFields] = useState({})
+export default function SecureReportForm({
+  category,
+  onCategoryChange,
+  proofData,
+  onProofDataChange,
+  onProofConfigChange
+}) {
+
+  // const [category, setCategory] = useState("")
+  // const [proofFields, setProofFields] = useState({})
   const [showPrivateFields, setShowPrivateFields] = useState(false)
 
   const handleCategoryChange = (selectedCategory) => {
-    setCategory(selectedCategory)
-    // Réinitialiser les champs de preuve
-    const fields = {}
-    proofFieldsByCategory[selectedCategory]?.forEach(field => {
-      fields[field.id] = ""
+    onCategoryChange(selectedCategory)
+  
+    const config = proofFieldsByCategory[selectedCategory] || []
+  
+    // Générer la structure vide
+    const initialValues = {}
+    config.forEach(field => {
+      initialValues[field.id] = ""
     })
-    setProofFields(fields)
+  
+    // 🔴 CRITIQUE : envoyer AU PARENT
+    onProofConfigChange(config)
+    onProofDataChange(initialValues)
   }
-
   const handleProofFieldChange = (fieldId, value) => {
-    setProofFields(prev => ({ ...prev, [fieldId]: value }))
+    onProofDataChange({
+      ...proofData,
+      [fieldId]: value
+    })
   }
+  
+  
 
   const renderProofField = (field) => {
     const isPrivate = field.private
@@ -84,7 +101,7 @@ export default function SecureReportForm() {
         {field.type === "text" && (
           <input
             type="text"
-            value={proofFields[field.id] || ""}
+            value={proofData?.[field.id] || ""}
             onChange={(e) => handleProofFieldChange(field.id, e.target.value)}
             required={field.required}
             className={`w-full px-4 py-3 bg-input border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary ${
@@ -97,7 +114,7 @@ export default function SecureReportForm() {
         {field.type === "number" && (
           <input
             type="number"
-            value={proofFields[field.id] || ""}
+            value={proofData?.[field.id] || ""}
             onChange={(e) => handleProofFieldChange(field.id, e.target.value)}
             required={field.required}
             min="0"
@@ -107,7 +124,7 @@ export default function SecureReportForm() {
         
         {field.type === "select" && (
           <select
-            value={proofFields[field.id] || ""}
+          value={proofData?.[field.id] || ""}
             onChange={(e) => handleProofFieldChange(field.id, e.target.value)}
             required={field.required}
             className="w-full px-4 py-3 bg-input border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary"
@@ -121,7 +138,7 @@ export default function SecureReportForm() {
         
         {field.type === "textarea" && (
           <textarea
-            value={proofFields[field.id] || ""}
+            value={proofData?.[field.id] || ""}
             onChange={(e) => handleProofFieldChange(field.id, e.target.value)}
             required={field.required}
             rows={3}

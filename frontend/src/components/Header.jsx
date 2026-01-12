@@ -1,9 +1,9 @@
 "use client"
 
 import { useState } from "react"
-import { Link, useLocation } from "react-router-dom"
+import { Link, useLocation, useNavigate } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
-import { Menu, X, User, LogOut, Moon, Sun, Globe } from "lucide-react"
+import { Menu, X, User, LogOut, Moon, Sun, Globe, Camera } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { useAuth } from "../contexts/AuthContext"
 import { useTheme } from "../contexts/ThemeContext"
@@ -12,6 +12,7 @@ export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const location = useLocation()
+  const navigate = useNavigate()
   const { user, signOut } = useAuth()
   const { t, i18n } = useTranslation()
   const { theme, toggleTheme } = useTheme()
@@ -66,13 +67,14 @@ export default function Header() {
             ))}
 
             <div className="flex items-center gap-2">
-              {/* <button
-                onClick={toggleTheme}
+              <button
+                onClick={()=>navigate('/scan')}
                 className="p-2 rounded-lg hover:bg-muted transition-colors"
                 aria-label="Toggle theme"
               >
-                {theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
-              </button> */}
+                {/* {theme === "light" ? <Moon size={18} /> : <Sun size={18} />} */}
+                <Camera size={18} className="text-primary"/>
+              </button>
 
               <button
                 onClick={toggleLanguage}
@@ -166,11 +168,12 @@ export default function Header() {
 
               <div className="flex items-center gap-2 px-4 py-2">
                 <button
-                  onClick={toggleTheme}
+                  onClick={()=>navigate('/scan')}
                   className="flex-1 p-2 rounded-lg bg-muted hover:bg-muted/80 transition-colors flex items-center justify-center gap-2"
                 >
-                  {theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
-                  <span className="text-sm">{theme === "light" ? "Dark" : "Light"}</span>
+                  {/* {theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
+                  <span className="text-sm">{theme === "light" ? "Dark" : "Light"}</span> */}
+                  <Camera size={18} className="text-primary"/>
                 </button>
 
                 <button
