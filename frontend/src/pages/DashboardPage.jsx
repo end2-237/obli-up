@@ -94,20 +94,44 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation tabs */}
-      <div className="flex gap-2 mb-6">
-        <button 
-          onClick={() => setActiveTab("lost")}
-          className={activeTab === "lost" ? "active" : ""}
-        >
-          Mes Objets
-        </button>
-        <button 
-          onClick={() => setActiveTab("sponsor")}
-          className={activeTab === "sponsor" ? "active" : ""}
-        >
-          Parrainage
-        </button>
-      </div>
+<div className="">
+  <div className="flex rounded-xl bg-gray-100 p-1">
+    <button
+      type="button"
+      onClick={() => setActiveTab("lost")}
+      aria-current={activeTab === "lost"}
+      className={`
+        w-1/2 px-4 py-2 text-sm font-medium rounded-lg
+        transition-all duration-200
+        ${
+          activeTab === "lost"
+            ? "bg-white text-gray-900 shadow"
+            : "text-gray-500 hover:text-gray-700"
+        }
+      `}
+    >
+      Mes objets
+    </button>
+
+    <button
+      type="button"
+      onClick={() => setActiveTab("sponsor")}
+      aria-current={activeTab === "sponsor"}
+      className={`
+        w-1/2 px-4 py-2 text-sm font-medium rounded-lg
+        transition-all duration-200
+        ${
+          activeTab === "sponsor"
+            ? "bg-white text-gray-900 shadow"
+            : "text-gray-500 hover:text-gray-700"
+        }
+      `}
+    >
+      Parrainage
+    </button>
+  </div>
+</div>
+
 
       {/* Content */}
       {activeTab === "lost" && (

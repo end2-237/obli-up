@@ -1,13 +1,57 @@
+// frontend/src/components/OwnershipVerification.jsx
 "use client"
 
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Shield, AlertTriangle, CheckCircle, XCircle, Lock, CreditCard, MessageSquare, X } from "lucide-react"
 
+// Fonction pour normaliser le texte
+const normalizeText = (text) => {
+  if (!text) return '';
+  return text
+    .toLowerCase()
+    .trim()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Enlever les accents
+    .replace(/[^\w\s]/g, ' ') // Remplacer la ponctuation par des espaces
+    .replace(/\s+/g, ' '); // Remplacer les espaces multiples par un seul
+};
+
+// Fonction pour calculer la similarité entre deux chaînes (algorithme de Levenshtein simplifié)
+const calculateSimilarity = (str1, str2) => {
+  const s1 = normalizeText(str1);
+  const s2 = normalizeText(str2);
+  
+  if (s1 === s2) return 100;
+  if (!s1 || !s2) return 0;
+  
+  const words1 = s1.split(' ').filter(w => w.length > 0);
+  const words2 = s2.split(' ').filter(w => w.length > 0);
+  
+  // Vérifier les mots communs
+  let commonWords = 0;
+  words1.forEach(w1 => {
+    if (words2.some(w2 => w2.includes(w1) || w1.includes(w2))) {
+      commonWords++;
+    }
+  });
+  
+  const maxWords = Math.max(words1.length, words2.length);
+  if (maxWords === 0) return 0;
+  
+  const wordScore = (commonWords / maxWords) * 100;
+  
+  // Vérifier les sous-chaînes
+  const substringScore = s1.includes(s2) || s2.includes(s1) ? 70 : 0;
+  
+  return Math.max(wordScore, substringScore);
+};
+
 export default function OwnershipVerification({ item, onVerificationComplete, onClose }) {
   const [step, setStep] = useState("intro")
   const [answers, setAnswers] = useState({})
   const [verificationScore, setVerificationScore] = useState(0)
+  const [detailedScores, setDetailedScores] = useState({})
   const [isProcessing, setIsProcessing] = useState(false)
 
   const verificationFields = {
@@ -21,35 +65,35 @@ export default function OwnershipVerification({ item, onVerificationComplete, on
       { id: "uniqueMarks", label: "Y a-t-il des autocollants ou marques distinctives ?", type: "textarea", weight: 20 }
     ],
     "Bagagerie": [
-      { id: "type", label: "Type de sac", type: "select", options: ["Sac à dos", "Sac à main", "Valise", "Sacoche"], required: true , weight: 15},
-      { id: "brand", label: "Marque (si visible)", type: "text", required: false , weight: 10},
-      { id: "color", label: "Couleur principale", type: "text", required: true , weight: 10},
-      { id: "material", label: "Matière", type: "select", options: ["Cuir", "Tissu", "Synthétique", "Autre"], required: true , weight: 10},
-      { id: "pockets", label: "Nombre de poches", type: "number", required: true , weight: 10},
-      { id: "contents", label: "Contenu du sac (liste privée)", type: "textarea", required: true, private: true , weight: 20},
-      { id: "defects", label: "Défauts visibles (déchirures, taches)", type: "textarea", required: false }
+      { id: "type", label: "Type de sac", type: "select", options: ["Sac à dos", "Sac à main", "Valise", "Sacoche"], weight: 15 },
+      { id: "brand", label: "Marque (si visible)", type: "text", weight: 10 },
+      { id: "color", label: "Couleur principale", type: "text", weight: 10 },
+      { id: "material", label: "Matière", type: "select", options: ["Cuir", "Tissu", "Synthétique", "Autre"], weight: 10 },
+      { id: "pockets", label: "Nombre de poches", type: "number", weight: 10 },
+      { id: "contents", label: "Contenu du sac (liste privée)", type: "textarea", weight: 20, private: true },
+      { id: "defects", label: "Défauts visibles (déchirures, taches)", type: "textarea", weight: 15 }
     ],
     "Clés": [
-      { id: "keyType", label: "Type de clés", type: "select", options: ["Maison", "Voiture", "Bureau", "Cadenas"], required: true , weight: 15},
-      { id: "keyCount", label: "Nombre de clés sur le trousseau", type: "number", required: true , weight: 10},
-      { id: "keychain", label: "Description du porte-clés", type: "textarea", required: false , weight: 10},
-      { id: "carBrand", label: "Marque de voiture (si applicable)", type: "text", required: false , weight: 10},
-      { id: "attachedCards", label: "Cartes ou badges attachés", type: "textarea", required: false , weight: 10},
-      { id: "uniqueFeatures", label: "Caractéristiques uniques", type: "textarea", required: true, private: true , weight: 20}
+      { id: "keyType", label: "Type de clés", type: "select", options: ["Maison", "Voiture", "Bureau", "Cadenas"], weight: 15 },
+      { id: "keyCount", label: "Nombre de clés sur le trousseau", type: "number", weight: 10 },
+      { id: "keychain", label: "Description du porte-clés", type: "textarea", weight: 15 },
+      { id: "carBrand", label: "Marque de voiture (si applicable)", type: "text", weight: 10 },
+      { id: "attachedCards", label: "Cartes ou badges attachés", type: "textarea", weight: 10 },
+      { id: "uniqueFeatures", label: "Caractéristiques uniques", type: "textarea", weight: 20, private: true }
     ],
     "Accessoires": [
-      { id: "type", label: "Type d'accessoire", type: "text", required: true , weight: 15},
-      { id: "brand", label: "Marque", type: "text", required: false , weight: 10},
-      { id: "color", label: "Couleur", type: "text", required: true , weight: 10},
-      { id: "material", label: "Matière", type: "text", required: true , weight: 10},
-      { id: "initials", label: "Initiales ou gravure", type: "text", required: false, private: true , weight: 10},
-      { id: "defects", label: "Défauts ou marques uniques", type: "textarea", required: false , weight: 20}
+      { id: "type", label: "Type d'accessoire", type: "text", weight: 15 },
+      { id: "brand", label: "Marque", type: "text", weight: 10 },
+      { id: "color", label: "Couleur", type: "text", weight: 10 },
+      { id: "material", label: "Matière", type: "text", weight: 10 },
+      { id: "initials", label: "Initiales ou gravure", type: "text", weight: 10, private: true },
+      { id: "defects", label: "Défauts ou marques uniques", type: "textarea", weight: 20 }
     ],
     "Documents": [
-      { id: "docType", label: "Type de document", type: "select", options: ["Carte d'identité", "Passeport", "Permis", "Carte vitale", "Autre"], required: true , weight: 15},
-      { id: "country", label: "Pays émetteur", type: "text", required: true , weight: 10},
-      { id: "condition", label: "État du document", type: "select", options: ["Neuf", "Bon état", "Usagé", "Abîmé"], required: true , weight: 10},
-      { id: "envelope", label: "Dans une enveloppe/étui", type: "select", options: ["Oui", "Non"], required: false , weight: 20}
+      { id: "docType", label: "Type de document", type: "select", options: ["Carte d'identité", "Passeport", "Permis", "Carte vitale", "Autre"], weight: 25 },
+      { id: "country", label: "Pays émetteur", type: "text", weight: 25 },
+      { id: "condition", label: "État du document", type: "select", options: ["Neuf", "Bon état", "Usagé", "Abîmé"], weight: 25 },
+      { id: "envelope", label: "Dans une enveloppe/étui", type: "select", options: ["Oui", "Non"], weight: 25 }
     ]
   }
 
@@ -62,22 +106,81 @@ export default function OwnershipVerification({ item, onVerificationComplete, on
   const calculateScore = () => {
     let totalScore = 0
     let maxScore = 0
+    const scores = {}
+
+    console.log('=== DÉBUT DU CALCUL DE SCORE ===')
+    console.log('Catégorie:', item.category)
+    console.log('Réponses utilisateur:', answers)
+    console.log('Données de référence:', item.proofData)
 
     currentFields.forEach(field => {
       maxScore += field.weight
-      const userAnswer = answers[field.id]?.toLowerCase().trim()
-      const correctAnswer = item.proofData?.[field.id]?.toLowerCase().trim()
+      const userAnswer = answers[field.id]
+      const correctAnswer = item.proofData?.[field.id]
 
-      if (userAnswer && correctAnswer) {
-        if (userAnswer === correctAnswer) {
-          totalScore += field.weight
-        } else if (userAnswer.includes(correctAnswer) || correctAnswer.includes(userAnswer)) {
-          totalScore += field.weight * 0.7
+      console.log(`\nChamp: ${field.label}`)
+      console.log(`  - Réponse utilisateur: "${userAnswer}"`)
+      console.log(`  - Réponse correcte: "${correctAnswer}"`)
+      console.log(`  - Poids: ${field.weight}%`)
+
+      // Si pas de réponse de l'utilisateur ou pas de donnée de référence
+      if (!userAnswer || !correctAnswer) {
+        scores[field.id] = { score: 0, similarity: 0, weight: field.weight }
+        console.log(`  ❌ Données manquantes - Score: 0`)
+        return
+      }
+
+      let fieldScore = 0
+      let similarity = 0
+
+      // Pour les champs de type number
+      if (field.type === 'number') {
+        const userNum = parseInt(userAnswer)
+        const correctNum = parseInt(correctAnswer)
+        if (userNum === correctNum) {
+          fieldScore = field.weight
+          similarity = 100
+        } else if (Math.abs(userNum - correctNum) <= 1) {
+          // Tolérance de ±1 pour les nombres
+          fieldScore = field.weight * 0.8
+          similarity = 80
         }
       }
+      // Pour les champs select et text/textarea
+      else {
+        similarity = calculateSimilarity(userAnswer, correctAnswer)
+        
+        if (similarity >= 90) {
+          fieldScore = field.weight
+        } else if (similarity >= 70) {
+          fieldScore = field.weight * 0.8
+        } else if (similarity >= 50) {
+          fieldScore = field.weight * 0.6
+        } else if (similarity >= 30) {
+          fieldScore = field.weight * 0.3
+        }
+      }
+
+      totalScore += fieldScore
+      scores[field.id] = { 
+        score: fieldScore, 
+        similarity: Math.round(similarity), 
+        weight: field.weight 
+      }
+      
+      console.log(`  ✅ Similarité: ${Math.round(similarity)}% - Score obtenu: ${fieldScore}/${field.weight}`)
     })
 
-    return Math.round((totalScore / maxScore) * 100)
+    const finalScore = maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0
+    setDetailedScores(scores)
+    
+    console.log('\n=== RÉSULTAT FINAL ===')
+    console.log('Score total:', totalScore, '/', maxScore)
+    console.log('Pourcentage final:', finalScore, '%')
+    console.log('Détail par champ:', scores)
+    console.log('======================\n')
+    
+    return finalScore
   }
 
   const handleSubmitVerification = () => {
@@ -143,11 +246,11 @@ export default function OwnershipVerification({ item, onVerificationComplete, on
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="text-accent font-bold">2.</span>
-                      <span>Vos réponses seront comparées avec celles du trouveur</span>
+                      <span>Vos réponses seront comparées sémantiquement avec celles du trouveur</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="text-accent font-bold">3.</span>
-                      <span>Un score de correspondance sera calculé</span>
+                      <span>Un score de correspondance sera calculé (casse et accents ignorés)</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="text-accent font-bold">4.</span>
@@ -196,7 +299,7 @@ export default function OwnershipVerification({ item, onVerificationComplete, on
                   <div>
                     <h2 className="text-2xl font-bold text-foreground">Questions de Vérification</h2>
                     <p className="text-sm text-muted-foreground">
-                      Répondez avec le maximum de précision pour prouver votre propriété
+                      Répondez avec le maximum de précision (majuscules/minuscules non prises en compte)
                     </p>
                   </div>
                 </div>
@@ -218,6 +321,16 @@ export default function OwnershipVerification({ item, onVerificationComplete, on
                               onChange={(e) => handleAnswerChange(field.id, e.target.value)}
                               className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-foreground"
                               placeholder="Votre réponse..."
+                            />
+                          )}
+
+                          {field.type === "number" && (
+                            <input
+                              type="number"
+                              value={answers[field.id] || ""}
+                              onChange={(e) => handleAnswerChange(field.id, e.target.value)}
+                              className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-foreground"
+                              placeholder="Nombre..."
                             />
                           )}
                           

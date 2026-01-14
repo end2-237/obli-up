@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Users, QrCode, Link2, Share2, Download, Copy, CheckCircle } from "lucide-react";
+import { Users, QrCode, Link2, Share2, Download, Copy, CheckCircle, Gift, TrendingUp } from "lucide-react";
 import { sponsorService } from "../services/sponsorService";
 
 export default function SponsorDashboard({ userId, userEmail }) {
@@ -9,12 +9,39 @@ export default function SponsorDashboard({ userId, userEmail }) {
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [qrCodeUrl, setQrCodeUrl] = useState(null);
+  const [claiming, setClaiming] = useState(false);
+  const [rewardClaimed, setRewardClaimed] = useState(
+    sponsorProfile?.reward_claimed ?? false
+  );  
+
+
+  const REWARD_THRESHOLD = 200;
+  const REWARD_AMOUNT = 10000;
 
   useEffect(() => {
     if (userId) {
       loadSponsorData();
     }
   }, [userId]);
+
+
+const handleClaimReward = async () => {
+  if (claiming || rewardClaimed) return;
+
+  try {
+    setClaiming(true);
+
+    // 👉 ici tu brancheras plus tard une RPC ou un update SQL
+    // await sponsorService.claimReward(sponsorProfile.id);
+
+    setRewardClaimed(true);
+  } catch (error) {
+    console.error("Erreur réclamation récompense:", error);
+  } finally {
+    setClaiming(false);
+  }
+};
+
 
   const loadSponsorData = async () => {
     try {
@@ -32,7 +59,8 @@ export default function SponsorDashboard({ userId, userEmail }) {
       setQrCodeUrl(qrUrl);
       
       const refs = await sponsorService.getSponsorReferrals(profile.id);
-      setReferrals(refs);
+      console.log('Filleuls chargés:', refs);
+      setReferrals(refs || []);
       
     } catch (error) {
       console.error('Erreur chargement données parrain:', error);
@@ -80,6 +108,12 @@ export default function SponsorDashboard({ userId, userEmail }) {
     }
   };
 
+  // Calcule la progression de récompense
+  const totalReferrals = sponsorProfile?.total_referrals || 0;
+  const progressPercentage = Math.min((totalReferrals / REWARD_THRESHOLD) * 100, 100);
+  const remainingReferrals = Math.max(REWARD_THRESHOLD - totalReferrals, 0);
+  const hasReachedReward = totalReferrals >= REWARD_THRESHOLD;
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -90,6 +124,102 @@ export default function SponsorDashboard({ userId, userEmail }) {
 
   return (
     <div className="space-y-6">
+      {/* Reward Progress Banner */}
+<motion.div
+  initial={{ opacity: 0, y: -20 }}
+  animate={{ opacity: 1, y: 0 }}
+  className={`glass rounded-2xl p-6 border-2 ${
+    hasReachedReward
+      ? "border-secondary bg-secondary/5"
+      : "border-primary/20"
+  }`}
+>
+  <div className="flex items-center gap-4 mb-4">
+    <div
+      className={`w-14 h-14 rounded-full flex items-center justify-center ${
+        hasReachedReward ? "bg-secondary/20" : "bg-primary/20"
+      }`}
+    >
+      <Gift
+        className={hasReachedReward ? "text-secondary" : "text-primary"}
+        size={28}
+      />
+    </div>
+
+    <div className="flex-1">
+      <h3 className="text-xl font-bold">
+        {hasReachedReward
+          ? "Récompense débloquée"
+          : "Progression vers la récompense"}
+      </h3>
+      <p className="text-sm text-muted-foreground">
+        {hasReachedReward
+          ? `Vous avez atteint ${REWARD_THRESHOLD} filleuls`
+          : `Encore ${remainingReferrals} filleuls pour débloquer ${REWARD_AMOUNT.toLocaleString()} FCFA`}
+      </p>
+    </div>
+
+    {hasReachedReward && (
+      <div className="text-right">
+        <div className="text-3xl font-bold text-secondary">
+          {REWARD_AMOUNT.toLocaleString()}
+        </div>
+        <div className="text-sm text-muted-foreground">FCFA</div>
+      </div>
+    )}
+  </div>
+
+  {/* Progress Bar */}
+  <div className="relative">
+    <div className="h-3 bg-muted rounded-full overflow-hidden">
+      <motion.div
+        initial={{ width: 0 }}
+        animate={{ width: `${progressPercentage}%` }}
+        transition={{ duration: 1, ease: "easeOut" }}
+        className={`h-full ${
+          hasReachedReward ? "bg-secondary" : "bg-primary"
+        }`}
+      />
+    </div>
+
+    <div className="mt-2 flex justify-between text-sm">
+      <span className="text-muted-foreground">{totalReferrals} filleuls</span>
+      <span className="font-semibold">
+        {Math.round(progressPercentage)}%
+      </span>
+      <span className="text-muted-foreground">
+        {REWARD_THRESHOLD} filleuls
+      </span>
+    </div>
+  </div>
+
+  {/* CTA Réclamation */}
+{hasReachedReward && !rewardClaimed && (
+  <div className="mt-6 flex justify-end">
+    <button
+      onClick={handleClaimReward}
+      disabled={claiming}
+      className="px-6 py-2 rounded-xl font-medium
+                 bg-secondary text-white
+                 hover:bg-secondary/90
+                 disabled:opacity-60 disabled:cursor-not-allowed
+                 transition-colors"
+    >
+      {claiming ? "Traitement..." : "Réclamer la récompense"}
+    </button>
+  </div>
+)}
+
+{hasReachedReward && rewardClaimed && (
+  <div className="mt-6 flex justify-end">
+    <span className="px-4 py-2 rounded-xl bg-secondary/20 text-secondary font-semibold text-sm">
+      Récompense réclamée
+    </span>
+  </div>
+)}
+
+</motion.div>
+
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <motion.div
@@ -101,7 +231,7 @@ export default function SponsorDashboard({ userId, userEmail }) {
             <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
               <Users className="text-primary" size={24} />
             </div>
-            <div className="text-3xl font-bold">{sponsorProfile?.total_referrals || 0}</div>
+            <div className="text-3xl font-bold">{totalReferrals}</div>
           </div>
           <div className="text-sm text-muted-foreground">Parrainages Total</div>
         </motion.div>
@@ -221,11 +351,14 @@ export default function SponsorDashboard({ userId, userEmail }) {
 
             <div className="bg-accent/10 border border-accent rounded-xl p-4">
               <div className="text-sm space-y-2">
-                <div className="font-semibold text-foreground">Comment ça marche ?</div>
+                <div className="font-semibold text-foreground flex items-center gap-2">
+                  <TrendingUp size={16} className="text-accent" />
+                  Programme de Récompenses
+                </div>
                 <ul className="space-y-1 text-muted-foreground">
                   <li>• Partagez votre lien ou QR code</li>
                   <li>• Vos filleuls s'inscrivent via votre lien</li>
-                  <li>• Vous recevez des récompenses</li>
+                  <li>• À 200 filleuls: gagnez {REWARD_AMOUNT.toLocaleString()} FCFA</li>
                 </ul>
               </div>
             </div>
@@ -254,34 +387,40 @@ export default function SponsorDashboard({ userId, userEmail }) {
           </div>
         ) : (
           <div className="space-y-3">
-            {referrals.map((referral, index) => (
-              <motion.div
-                key={referral.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className="p-4 bg-muted rounded-xl border border-border flex items-center justify-between"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                    <Users size={20} className="text-primary" />
-                  </div>
-                  <div>
-                    <div className="font-semibold">{referral.user?.email || 'Utilisateur'}</div>
-                    <div className="text-xs text-muted-foreground">
-                      Inscrit le {new Date(referral.created_at).toLocaleDateString('fr-FR')}
+            {referrals.map((referral, index) => {
+              // Gérer les différentes structures de données possibles
+              const userName = referral.user?.display_name || "Utilisateur";
+              const createdAt = referral.created_at || new Date();
+              
+              return (
+                <motion.div
+                  key={referral.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  className="p-4 bg-muted rounded-xl border border-border flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                      <Users size={20} className="text-primary" />
+                    </div>
+                    <div>
+                      <div className="font-semibold">{userName}</div>
+                      <div className="text-xs text-muted-foreground">
+                        Inscrit le {new Date(createdAt).toLocaleDateString('fr-FR')}
+                      </div>
                     </div>
                   </div>
-                </div>
-                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                  referral.status === 'active' 
-                    ? 'bg-secondary/20 text-secondary'
-                    : 'bg-muted text-muted-foreground'
-                }`}>
-                  {referral.status === 'active' ? 'Actif' : 'Inactif'}
-                </span>
-              </motion.div>
-            ))}
+                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                    referral.status === 'active' 
+                      ? 'bg-secondary/20 text-secondary'
+                      : 'bg-muted text-muted-foreground'
+                  }`}>
+                    {referral.status === 'active' ? 'Actif' : 'Inactif'}
+                  </span>
+                </motion.div>
+              );
+            })}
           </div>
         )}
       </motion.div>

@@ -5,11 +5,12 @@ export const sponsorService = {
   // Créer un profil de parrain
   async createSponsorProfile(userId) {
     try {
+      // Vérifier si le profil existe déjà
       const { data: existing } = await supabase
         .from("sponsors")
         .select("*")
         .eq("user_id", userId)
-        .single();
+        .maybeSingle();
 
       if (existing) {
         return existing;
@@ -51,7 +52,7 @@ export const sponsorService = {
       .from("sponsors")
       .select("*")
       .eq("user_id", userId)
-      .single();
+      .maybeSingle();
 
     if (error && error.code !== "PGRST116") throw error;
     return data;
@@ -79,15 +80,21 @@ export const sponsorService = {
         throw new Error("Code de parrainage invalide");
       }
 
+      // Vérifier que l'utilisateur ne se parraine pas lui-même
+      if (sponsor.user_id === referredUserId) {
+        // console.log("Un utilisateur ne peut pas se parrainer lui-même");
+        return null;
+      }
+
       // Vérifier que l'utilisateur n'est pas déjà parrainé
       const { data: existing } = await supabase
         .from("referrals")
         .select("id")
         .eq("referred_user_id", referredUserId)
-        .single();
+        .maybeSingle();
 
       if (existing) {
-        console.log("Utilisateur déjà parrainé");
+        // console.log("Utilisateur déjà parrainé");
         return null;
       }
 
@@ -106,32 +113,64 @@ export const sponsorService = {
 
       if (error) throw error;
 
+      // console.log("Affiliation créée avec succès:", data);
       return data;
     } catch (error) {
-      console.error("Erreur création affiliation:", error);
+      // console.error("Erreur création affiliation:", error);
       throw error;
     }
   },
 
-  // Récupérer les filleuls d'un sponsor
   async getSponsorReferrals(sponsorId) {
-    const { data, error } = await supabase
-      .from("referrals")
-      .select(
-        `
-        *,
-        user:referred_user_id (
-          email,
-          created_at
-        )
-      `
-      )
-      .eq("sponsor_id", sponsorId)
-      .order("created_at", { ascending: false });
+    try {
+      // console.log("Chargement des filleuls pour sponsor:", sponsorId);
+  
+      const { data: referralsData, error: referralsError } = await supabase
+        .from("referrals")
+        .select("*")
+        .eq("sponsor_id", sponsorId)
+        .order("created_at", { ascending: false });
+  
+      if (referralsError) throw referralsError;
+      if (!referralsData?.length) return [];
+  
+      // console.log("Referrals trouvés:", referralsData.length);
+  
+      // Récupérer les userIds valides
+      const userIds = referralsData
+        .map(r => r.referred_user_id)
+  
+      if (!userIds.length) return referralsData.map(r => ({
+        ...r,
+        user: { display_name: "Utilisateur", created_at: r.created_at }
+      }));
+  
+      // Récupérer les profils correspondants
+      const { data: profilesData, error: profilesError } = await supabase
+        .from("profiles")
+        .select("id, display_name, created_at")
+        .in("id", userIds);
+  
+      if (profilesError) console.warn("Impossible de récupérer les profils:", profilesError);
+      // console.log("Profils trouvés:", profilesData?.length || 0);
+  
+      // Combiner referrals + profils
+      return referralsData.map(referral => {
+        const profile = profilesData?.find(p => p.id === referral.referred_user_id);
+        return {
+          ...referral,
+          user: profile || { display_name: "Utilisateur", created_at: referral.created_at }
+        };
+      });
+  
+    } catch (error) {
+      console.error("Erreur dans getSponsorReferrals:", error);
+      return [];
+    }
+  }
+  
+  ,
 
-    if (error) throw error;
-    return data || [];
-  },
 
   // Générer l'URL de parrainage
   generateReferralUrl(sponsorCode) {
