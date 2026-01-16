@@ -1,20 +1,21 @@
-"use client"
+"use client";
 
-import { Routes, Route } from "react-router-dom"
-import { AnimatePresence } from "framer-motion"
-import Layout from "./components/Layout"
-import ProtectedRoute from "./components/ProtectedRoute"
-import HomePage from "./pages/HomePage"
-import ItemListingPage from "./pages/ItemListingPage"
-import ItemDetailPage from "./pages/ItemDetailPage"
-import ReportItemPage from "./pages/ReportItemPage"
-import DashboardPage from "./pages/DashboardPage"
-import ContactPage from "./pages/ContactPage"
-import AuthPage from "./pages/AuthPage"
-import QRStorePage from "./pages/QRStorePage"
-import QRScannerPage from "./pages/QRScannerPage"
-import ChatPage from "./pages/ChatPage"
-import QRStorePageNew from "./pages/QRStorePageNew"
+import { Routes, Route } from "react-router-dom";
+import { AnimatePresence } from "framer-motion";
+import Layout from "./components/Layout";
+import ProtectedRoute from "./components/ProtectedRoute";
+import HomePage from "./pages/HomePage";
+import ItemListingPage from "./pages/ItemListingPage";
+import ItemDetailPage from "./pages/ItemDetailPage";
+import ReportItemPage from "./pages/ReportItemPage";
+import DashboardPage from "./pages/DashboardPage";
+import ContactPage from "./pages/ContactPage";
+import AuthPage from "./pages/AuthPage";
+import QRStorePage from "./pages/QRStorePage";
+import QRScannerPage from "./pages/QRScannerPage";
+import ChatPage from "./pages/ChatPage";
+import QRStorePageNew from "./pages/QRStorePageNew";
+import ChatListWithStream from "./components/ChatList";
 
 function App() {
   return (
@@ -43,19 +44,28 @@ function App() {
             }
           />
           <Route
-            path="chat"
+            path="chat/:channelId"
             element={
               <ProtectedRoute>
                 <ChatPage />
               </ProtectedRoute>
             }
           />
+          <Route
+            path="chat/list"
+            element={
+              <ProtectedRoute>
+                <ChatListWithStream/>
+              </ProtectedRoute>
+            }
+          />
+
           <Route path="contact" element={<ContactPage />} />
           <Route path="auth" element={<AuthPage />} />
         </Route>
       </Routes>
     </AnimatePresence>
-  )
+  );
 }
 
-export default App
+export default App;

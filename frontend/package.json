@@ -26,6 +26,8 @@
     "react-dom": "^18.3.1",
     "react-i18next": "^14.0.0",
     "react-router-dom": "^6.22.0",
+    "stream-chat": "^9.28.0",
+    "stream-chat-react": "^13.13.3",
     "tailwind-merge": "3.4.0",
     "tailwindcss": "^4.1.18",
     "tailwindcss-animate": "1.0.7",

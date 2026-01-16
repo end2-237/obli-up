@@ -20,11 +20,16 @@ import { useAuth } from "../contexts/AuthContext"
 import { supabase } from "../lib/supabase"
 import OwnershipVerification from "../components/OwnershipVerification"
 
+import { useStreamChat } from "../contexts/StreamChatContext"
+import { createOrGetChannel } from "../utils/chatUtils"
+
 export default function ItemDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { t } = useLanguage()
   const { user } = useAuth()
+
+  const { client: chatClient, loading: chatLoading, error: chatError } = useStreamChat()
 
   const [item, setItem] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -41,8 +46,6 @@ export default function ItemDetailPage() {
     const fetchItem = async () => {
       setLoading(true)
 
-      console.log('📥 Chargement de l\'item:', id)
-
       const { data: itemData, error } = await supabase
         .from("items")
         .select("*")
@@ -55,60 +58,86 @@ export default function ItemDetailPage() {
         return
       }
 
-      console.log('✅ Item chargé:', itemData)
-      console.log('🔍 proof_data brut:', itemData.proof_data)
-      console.log('🔍 Type proof_data:', typeof itemData.proof_data)
-
-      // ✅ CORRECTION CRITIQUE: Parser proof_data si nécessaire
+      // Parsing proof_data
       let proofData = itemData.proof_data
-      
-      // Si c'est une chaîne JSON, la parser
-      if (typeof proofData === 'string') {
-        try {
-          proofData = JSON.parse(proofData)
-          console.log('✅ proof_data parsé depuis string:', proofData)
-        } catch (e) {
-          console.error('❌ Erreur parsing proof_data:', e)
-          proofData = null
-        }
-      } else if (typeof proofData === 'object' && proofData !== null) {
-        console.log('✅ proof_data est déjà un objet:', proofData)
-      } else {
-        console.warn('⚠️ proof_data est null ou undefined')
+      if (typeof proofData === "string") {
+        try { proofData = JSON.parse(proofData) } catch (e) { proofData = null }
       }
 
+      // Récupérer les images
       const { data: imagesData } = await supabase
         .from("item_images")
         .select("image_url")
         .eq("item_id", id)
 
-      const finalItem = {
+      setItem({
         ...itemData,
-        proofData: proofData, // ✅ IMPORTANT: Utiliser la version parsée
+        proofData,
         images: imagesData?.map(i => i.image_url) || [],
-        image: imagesData?.[0]?.image_url || null,
         reporter: {
           name: "Utilisateur",
           joinedDate: itemData.created_at,
-          itemsReported: 0,
         },
-      }
-
-      console.log('📦 Item final avec proofData:', finalItem)
-      console.log('📦 proofData final:', finalItem.proofData)
-
-      setItem(finalItem)
+      })
       setLoading(false)
     }
 
     fetchItem()
   }, [id, navigate])
 
+  /* =========================
+     CHAT LOGIC
+  ========================= */
+  const handleStartChat = async () => {
+    if (!hasAccess) {
+      setShowVerification(true)
+      return
+    }
+
+    if (!chatClient) {
+      alert("❌ Erreur : Chat non initialisé")
+      console.error("chatClient:", chatClient)
+      return
+    }
+
+    if (!user) {
+      alert("❌ Utilisateur non connecté")
+      return
+    }
+
+    if (user.id === item.user_id) {
+      alert("❌ Vous ne pouvez pas démarrer une conversation avec vous-même.")
+      return
+    }
+
+    try {
+      const channel = await createOrGetChannel(
+        chatClient,
+        user.id,
+        item.user_id,
+        item.id,
+        item.title
+      )
+
+      // Envoyer un message initial si canal vide
+      if ((channel.state.messages || []).length === 0) {
+        await channel.sendMessage({
+          text: `Bonjour, je suis intéressé par votre objet "${item.title}".`,
+        })
+      }
+
+      navigate(`/chat/${channel.id}`)
+    } catch (error) {
+      console.error("Erreur handleStartChat:", error)
+      alert("Erreur lors du démarrage du chat. Vérifiez la console.")
+    }
+  }
+
   const handleVerificationComplete = (success) => {
     if (success) {
       setHasAccess(true)
       setShowVerification(false)
-      alert('✅ Accès débloqué avec succès !')
+      alert("✅ Accès débloqué avec succès !")
     }
   }
 
@@ -274,10 +303,10 @@ export default function ItemDetailPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => navigate("/chat")}
+                    onClick={handleStartChat}
                     className="w-full px-6 py-3 bg-secondary text-secondary-foreground rounded-xl font-semibold hover:bg-secondary/90 transition-colors"
                   >
-                    Ouvrir le Chat
+                    Démarrer une Conversation
                   </button>
                 </div>
               </motion.div>
