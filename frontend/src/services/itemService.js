@@ -24,12 +24,20 @@ export const itemService = {
 
   // Récupérer tous les items actifs
   async getAllItems(filters = {}) {
+    const fourDaysAgo = new Date();
+    fourDaysAgo.setDate(fourDaysAgo.getDate() - 4);
+
     // Récupérer les items
-    const { data: items, error } = await supabase
+    let query = supabase
       .from("items")
       .select("*")
-      .eq("status", "active")
       .order("created_at", { ascending: false });
+
+    // Filtrer selon le statut et la date
+    // Les items "returned" ne sont visibles que pendant 4 jours
+    query = query.or(`status.eq.active,and(status.eq.claimed,returned_at.gte.${fourDaysAgo.toISOString()})`);
+
+    const { data: items, error } = await query;
 
     if (error) throw error;
 
@@ -45,7 +53,7 @@ export const itemService = {
 
         return {
           ...item,
-          image: imagesData?.[0]?.image_url || null, // première image
+          image: imagesData?.[0]?.image_url || null,
           images: imagesData?.map((img) => img.image_url) || [],
         };
       })
@@ -95,7 +103,7 @@ export const itemService = {
       image: imagesData?.[0]?.image_url || null,
       images: imagesData?.map((img) => img.image_url) || [],
       reporter: {
-        name: "Utilisateur", // à compléter
+        name: "Utilisateur",
         joinedDate: item.created_at,
         itemsReported: 0,
       },
@@ -120,6 +128,7 @@ export const itemService = {
           proof_fields_config: itemData.proofFieldsConfig || null,
           verification_required: itemData.verificationRequired !== false,
           request_id: requestId,
+          status: 'active'
         },
       ])
       .select()
@@ -138,19 +147,16 @@ export const itemService = {
       const fileName = `${itemId}/${Math.random()}.${fileExt}`;
       const filePath = `items/${fileName}`;
 
-      // Upload vers Supabase Storage
       const { error: uploadError } = await supabase.storage
         .from("objets-images")
         .upload(filePath, file);
 
       if (uploadError) throw uploadError;
 
-      // Obtenir l'URL publique
       const {
         data: { publicUrl },
       } = supabase.storage.from("objets-images").getPublicUrl(filePath);
 
-      // Insérer dans la table item_images
       const { error: dbError } = await supabase.from("item_images").insert([
         {
           item_id: itemId,
@@ -194,6 +200,22 @@ export const itemService = {
     const { data, error } = await supabase
       .from("items")
       .update(updates)
+      .eq("id", itemId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  // Marquer un objet comme retrouvé/rendu
+  async markAsReturned(itemId) {
+    const { data, error } = await supabase
+      .from("items")
+      .update({
+        status: 'claimed',
+        returned_at: new Date().toISOString()
+      })
       .eq("id", itemId)
       .select()
       .single();

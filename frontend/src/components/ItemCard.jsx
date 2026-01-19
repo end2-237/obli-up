@@ -1,115 +1,230 @@
-"use client"
+// frontend/src/components/ItemCard.jsx
+import { motion } from "framer-motion";
+import { Calendar, MapPin, Tag, CheckCircle, ArrowRight } from "lucide-react";
+import { Link } from "react-router-dom";
 
-import { motion } from "framer-motion"
-import { Link } from "react-router-dom"
-import { MapPin, Calendar, Tag, ArrowRight } from "lucide-react"
+export default function ItemCard({ item, index, viewMode = "grid" }) {
+  const isReturned = item.status === "claimed";
 
-export default function ItemCard({ item, index, viewMode }) {
-  // if (item.image === null) console.log("aucune image");
+  const getItemBadge = () => {
+    if (isReturned) {
+      return {
+        label: "✓ Retrouvé",
+        className: "bg-green-500 text-white",
+      };
+    }
+    return {
+      label: item.type === "lost" ? "Perdu" : "Trouvé",
+      className:
+        item.type === "lost"
+          ? "bg-destructive/20 text-destructive"
+          : "bg-secondary/20 text-secondary",
+    };
+  };
+
+  const badge = getItemBadge();
+
   if (viewMode === "list") {
     return (
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
         transition={{ delay: index * 0.05 }}
-        className="glass rounded-xl p-4 hover:border-primary/50 transition-all"
+        whileHover={{ scale: 1.01 }}
+        className={`glass rounded-xl overflow-hidden hover:border-primary/50 transition-all ${
+          isReturned ? "opacity-75" : ""
+        }`}
       >
-        <Link to={`/items/${item.id}`} className="flex flex-col sm:flex-row gap-4">
-          <img
-            src={item.image || "/placeholder.svg"}
-            alt={item.title}
-            className="w-full sm:w-32 h-32 object-cover rounded-lg"
-            crossOrigin="anonymous"
-          />
-          <div className="flex-1">
-            <div className="flex items-start justify-between mb-2">
-              <h3 className="text-xl font-semibold">{item.title}</h3>
-              <span
-                className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                  item.status === "lost" ? "bg-destructive/20 text-destructive" : "bg-secondary/20 text-secondary"
+        <Link to={`/items/${item.id}`}>
+          <div className="flex gap-4 p-4">
+            <div className="relative w-32 h-32 flex-shrink-0">
+              <img
+                src={item.image || "/placeholder.svg"}
+                alt={item.title}
+                className={`w-full h-full object-cover rounded-lg ${
+                  isReturned ? "grayscale" : ""
                 }`}
-              >
-                {item.status === "lost" ? "Perdu" : "Trouvé"}
-              </span>
+              />
+              {isReturned && (
+                <div className="absolute inset-0 bg-green-500/20 rounded-lg flex items-center justify-center">
+                  <CheckCircle className="text-green-600" size={32} />
+                </div>
+              )}
             </div>
-            <p className="text-muted-foreground mb-3 line-clamp-2">{item.description}</p>
-            <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-              <div className="flex items-center gap-1">
-                <Tag size={16} />
-                <span>{item.category}</span>
+
+            <div className="flex-1 min-w-0">
+              <div className="flex items-start justify-between mb-2">
+                <h3 className="text-lg font-semibold line-clamp-1">
+                  {item.title}
+                </h3>
+                <span
+                  className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap ml-2 ${badge.className}`}
+                >
+                  {badge.label}
+                </span>
               </div>
-              <div className="flex items-center gap-1">
-                <MapPin size={16} />
-                <span>{item.location}</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Calendar size={16} />
-                <span>{new Date(item.date).toLocaleDateString("fr-FR")}</span>
+
+              <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+                {item.description}
+              </p>
+
+              <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+                <div className="flex items-center gap-1">
+                  <Tag size={14} />
+                  <span>{item.category}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <MapPin size={14} />
+                  <span className="line-clamp-1">{item.location}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Calendar size={14} />
+                  <span>{new Date(item.date).toLocaleDateString("fr-FR")}</span>
+                </div>
               </div>
             </div>
-          </div>
-          <div className="flex items-center">
-            <ArrowRight className="text-primary" size={20} />
           </div>
         </Link>
       </motion.div>
-    )
+    );
   }
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.05 }}
+      transition={{ delay: index * 0.1 }}
       whileHover={{ y: -8 }}
-      className="glass rounded-xl overflow-hidden hover:border-primary/50 transition-all group"
+      className={`glass rounded-2xl overflow-hidden hover:border-primary/50 transition-all ${
+        isReturned ? "opacity-75" : ""
+      }`}
     >
+
+      {item.status !== "claimed" ? (
+        
       <Link to={`/items/${item.id}`}>
         <div className="relative h-48 overflow-hidden">
           <img
             src={item.image || "/placeholder.svg"}
             alt={item.title}
-            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-            crossOrigin="anonymous"
+            className={`w-full h-full object-cover transition-transform duration-300 hover:scale-110 ${
+              isReturned ? "grayscale" : ""
+            }`}
           />
-          <div className="absolute top-3 right-3">
+          {isReturned && (
+            <div className="absolute inset-0 bg-green-500/30 flex items-center justify-center">
+              <div className="bg-white rounded-full p-3">
+                <CheckCircle className="text-green-600" size={32} />
+              </div>
+            </div>
+          )}
+          <div className="absolute top-4 right-4">
             <span
-              className={`px-3 py-1 rounded-full text-xs font-semibold backdrop-blur-sm ${
-                item.status === "lost"
-                  ? "bg-destructive/80 text-destructive-foreground"
-                  : "bg-secondary/80 text-secondary-foreground"
-              }`}
+              className={`px-3 py-1 rounded-full text-xs font-semibold backdrop-blur-md ${badge.className}`}
             >
-              {item.status === "lost" ? "Perdu" : "Trouvé"}
+              {badge.label}
             </span>
           </div>
         </div>
 
-        <div className="p-5">
-          <h3 className="text-xl font-semibold mb-2 group-hover:text-primary transition-colors">{item.title}</h3>
-          <p className="text-muted-foreground text-sm mb-4 line-clamp-2">{item.description}</p>
+        <div className="p-4">
+          <h3 className="text-lg font-semibold mb-2 line-clamp-1">
+            {item.title}
+          </h3>
+          <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
+            {item.description}
+          </p>
 
           <div className="space-y-2 text-sm text-muted-foreground">
             <div className="flex items-center gap-2">
-              <Tag size={16} />
+              <Tag size={14} />
               <span>{item.category}</span>
             </div>
             <div className="flex items-center gap-2">
-              <MapPin size={16} />
-              <span>{item.location}</span>
+              <MapPin size={14} />
+              <span className="line-clamp-1">{item.location}</span>
             </div>
             <div className="flex items-center gap-2">
-              <Calendar size={16} />
+              <Calendar size={14} />
               <span>{new Date(item.date).toLocaleDateString("fr-FR")}</span>
             </div>
           </div>
 
-          <div className="mt-4 pt-4 border-t border-border flex items-center justify-between">
-            <span className="text-sm text-primary font-semibold">Voir les détails</span>
-            <ArrowRight className="text-primary group-hover:translate-x-1 transition-transform" size={18} />
+          {item.status !== "claimed" && (
+            <div className="mt-4 pt-4 border-t border-border flex items-center justify-between">
+              <span className="text-sm text-primary font-semibold">
+                Voir les détails
+              </span>
+              <ArrowRight
+                className="text-primary group-hover:translate-x-1 transition-transform"
+                size={18}
+              />
+            </div>
+          )}
+        </div>
+      </Link>):
+
+      (<div className="div">
+        <div className="relative h-48 overflow-hidden">
+          <img
+            src={item.image || "/placeholder.svg"}
+            alt={item.title}
+            className={`w-full h-full object-cover transition-transform duration-300 hover:scale-110 ${
+              isReturned ? "grayscale" : ""
+            }`}
+          />
+          {isReturned && (
+            <div className="absolute inset-0 bg-green-500/30 flex items-center justify-center">
+              <div className="bg-white rounded-full p-3">
+                <CheckCircle className="text-green-600" size={32} />
+              </div>
+            </div>
+          )}
+          <div className="absolute top-4 right-4">
+            <span
+              className={`px-3 py-1 rounded-full text-xs font-semibold backdrop-blur-md ${badge.className}`}
+            >
+              {badge.label}
+            </span>
           </div>
         </div>
-      </Link>
+
+        <div className="p-4">
+          <h3 className="text-lg font-semibold mb-2 line-clamp-1">
+            {item.title}
+          </h3>
+          <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
+            {item.description}
+          </p>
+
+          <div className="space-y-2 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <Tag size={14} />
+              <span>{item.category}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <MapPin size={14} />
+              <span className="line-clamp-1">{item.location}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Calendar size={14} />
+              <span>{new Date(item.date).toLocaleDateString("fr-FR")}</span>
+            </div>
+          </div>
+
+          {item.status !== "claimed" && (
+            <div className="mt-4 pt-4 border-t border-border flex items-center justify-between">
+              <span className="text-sm text-primary font-semibold">
+                Voir les détails
+              </span>
+              <ArrowRight
+                className="text-primary group-hover:translate-x-1 transition-transform"
+                size={18}
+              />
+            </div>
+          )}
+        </div>
+      </div>)}
     </motion.div>
-  )
+  );
 }

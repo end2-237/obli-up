@@ -23,12 +23,6 @@ export default function ItemListingPage() {
   }, [selectedCategory, searchQuery])
 
   const loadItems = async () => {
-    async function testImages() {
-      const images = await itemService.getAllImages();
-      console.log("Liste complète des URLs d'images:", images.map(i => i.image_url));
-    }
-    
-    testImages();
     try {
       setLoading(true)
       const data = await itemService.getAllItems({
