@@ -1,4 +1,4 @@
-
+// frontend/src/contexts/StreamChatContext.jsx
 import { createContext, useContext, useEffect, useState, useRef } from 'react'
 import { StreamChat } from 'stream-chat'
 import { useAuth } from './AuthContext'
@@ -23,14 +23,21 @@ export const StreamChatProvider = ({ children }) => {
 
   useEffect(() => {
     if (!user) {
-      // Aucun user → cleanup
-      if (clientRef.current) {
-        clientRef.current.disconnectUser().catch(console.error);
-        clientRef.current = null;
-      }
-      setClient(null);
-      setLoading(false);
-      setError(null);
+      // Cleanup si pas d'utilisateur
+      const cleanup = async () => {
+        if (clientRef.current) {
+          try {
+            await clientRef.current.disconnectUser();
+          } catch (e) {
+            console.warn('Erreur déconnexion Stream:', e);
+          }
+          clientRef.current = null;
+        }
+        setClient(null);
+        setLoading(false);
+        setError(null);
+      };
+      cleanup();
       return;
     }
 
@@ -52,6 +59,10 @@ export const StreamChatProvider = ({ children }) => {
         const { data: sessionData } = await supabase.auth.getSession();
         const accessToken = sessionData?.session?.access_token;
 
+        if (!accessToken) {
+          throw new Error('No access token');
+        }
+
         const res = await fetch(`http://localhost:3000/stream/token`, {
           method: 'POST',
           headers: {
@@ -60,8 +71,11 @@ export const StreamChatProvider = ({ children }) => {
           }
         });
 
-        const { token } = await res.json();
+        if (!res.ok) {
+          throw new Error('Failed to get Stream token');
+        }
 
+        const { token } = await res.json();
         const chatClient = StreamChat.getInstance(apiKey);
 
         // Connecter seulement si pas déjà connecté
@@ -74,6 +88,7 @@ export const StreamChatProvider = ({ children }) => {
             },
             token
           );
+          console.log('✅ Stream Chat connecté pour:', user.email);
         }
 
         if (isMounted) {
@@ -82,10 +97,14 @@ export const StreamChatProvider = ({ children }) => {
           setError(null);
         }
       } catch (err) {
-        console.error(err);
-        if (isMounted) setError(err.message);
+        console.error('❌ Erreur init Stream Chat:', err);
+        if (isMounted) {
+          setError(err.message);
+        }
       } finally {
-        if (isMounted) setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 

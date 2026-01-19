@@ -88,51 +88,54 @@ export default function ItemDetailPage() {
   /* =========================
      CHAT LOGIC
   ========================= */
-  const handleStartChat = async () => {
-    if (!hasAccess) {
-      setShowVerification(true)
-      return
-    }
+  // Dans ItemDetailPage.jsx - Remplacer la fonction handleStartChat
 
-    if (!chatClient) {
-      alert("❌ Erreur : Chat non initialisé")
-      console.error("chatClient:", chatClient)
-      return
-    }
-
-    if (!user) {
-      alert("❌ Utilisateur non connecté")
-      return
-    }
-
-    if (user.id === item.user_id) {
-      alert("❌ Vous ne pouvez pas démarrer une conversation avec vous-même.")
-      return
-    }
-
-    try {
-      const channel = await createOrGetChannel(
-        chatClient,
-        user.id,
-        item.user_id,
-        item.id,
-        item.title
-      )
-
-      // Envoyer un message initial si canal vide
-      if ((channel.state.messages || []).length === 0) {
-        await channel.sendMessage({
-          text: `Bonjour, je suis intéressé par votre objet "${item.title}".`,
-        })
-      }
-
-      navigate(`/chat/${channel.id}`)
-    } catch (error) {
-      console.error("Erreur handleStartChat:", error)
-      alert("Erreur lors du démarrage du chat. Vérifiez la console.")
-    }
+const handleStartChat = async () => {
+  if (!hasAccess) {
+    setShowVerification(true);
+    return;
   }
 
+  if (!chatClient) {
+    alert("❌ Chat non initialisé");
+    return;
+  }
+
+  if (!user || user.id === item.user_id) {
+    alert("❌ Action non autorisée");
+    return;
+  }
+
+  try {
+    console.log('🚀 Démarrage conversation...');
+    
+    const channel = await createOrGetChannel(
+      chatClient,
+      user.id,
+      item.user_id,
+      item.id,
+      item.title
+    );
+
+    console.log('✅ Canal obtenu:', channel.id);
+
+    // Envoyer un message initial si canal vide
+    const messages = channel.state.messages || [];
+    if (messages.length === 0) {
+      await channel.sendMessage({
+        text: `Bonjour, je suis intéressé par votre objet "${item.title}".`,
+      });
+      console.log('✅ Message initial envoyé');
+    }
+
+    // ✅ CORRECTION : Redirection immédiate
+    navigate(`/chat/${channel.id}`);
+
+  } catch (error) {
+    console.error('❌ Erreur:', error);
+    alert(`Erreur: ${error.message}`);
+  }
+};
   const handleVerificationComplete = (success) => {
     if (success) {
       setHasAccess(true)

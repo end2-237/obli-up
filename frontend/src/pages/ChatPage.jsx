@@ -75,7 +75,10 @@ export default function ChatPage() {
     return (
       <div className="h-screen flex items-center justify-center bg-background">
         <div className="text-center">
-          <Loader2 className="animate-spin mx-auto mb-4 text-primary" size={48} />
+          <Loader2
+            className="animate-spin mx-auto mb-4 text-primary"
+            size={48}
+          />
           <p className="text-muted-foreground">Chargement du chat...</p>
         </div>
       </div>
@@ -106,7 +109,9 @@ export default function ChatPage() {
   if (!channel) {
     return (
       <div className="h-screen flex items-center justify-center bg-background">
-        <p className="text-muted-foreground">Aucune conversation sélectionnée</p>
+        <p className="text-muted-foreground">
+          Aucune conversation sélectionnée
+        </p>
       </div>
     );
   }

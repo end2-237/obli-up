@@ -22,6 +22,7 @@ export default function Header() {
     { name: t("search"), path: "/items" },
     { name: t("report"), path: "/report" },
     { name: t("qrStore"), path: "/qr-store" },
+    { name: t("contact"), path: "/contact" },
     { name: t("dashboard"), path: "/dashboard" },
   ]
 

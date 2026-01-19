@@ -68,12 +68,14 @@ app.post("/stream/token", async (req, res) => {
 });
 
 // ✅ Route pour créer un channel entre deux utilisateurs
+// backend/index.js - Route /stream/create-channel
+
 app.post("/stream/create-channel", async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
-    const { otherUserId, itemId, itemTitle } = req.body;
+    const { channelId, otherUserId, itemId, itemTitle } = req.body;
 
-    if (!authHeader || !otherUserId) {
+    if (!authHeader || !channelId || !otherUserId) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
@@ -86,28 +88,38 @@ app.post("/stream/create-channel", async (req, res) => {
 
     const currentUserId = data.user.id;
 
-    // Vérifier que l'autre utilisateur existe dans Stream
+    // ✅ IMPORTANT : Créer/mettre à jour les DEUX utilisateurs dans Stream
     try {
+      // Utilisateur actuel
+      await streamClient.upsertUser({
+        id: currentUserId,
+        name: data.user.user_metadata?.name || data.user.email.split('@')[0],
+        email: data.user.email,
+      });
+
+      // Autre utilisateur - Récupérer ses infos depuis Supabase
+      const { data: otherUserData } = await supabase.auth.admin.getUserById(otherUserId);
+      
       await streamClient.upsertUser({
         id: otherUserId,
+        name: otherUserData?.user?.user_metadata?.name || otherUserData?.user?.email?.split('@')[0] || 'Utilisateur',
+        email: otherUserData?.user?.email,
       });
+
+      console.log('✅ Utilisateurs créés dans Stream:', currentUserId, otherUserId);
     } catch (err) {
-      console.warn("⚠️ Could not verify other user:", err.message);
+      console.warn('⚠️ Erreur création utilisateurs Stream:', err.message);
     }
 
-    // Créer un channel unique entre les deux utilisateurs
-    const channelId = [currentUserId, otherUserId].sort().join('-');
-    
+    // Créer le canal
     const channel = streamClient.channel('messaging', channelId, {
       members: [currentUserId, otherUserId],
       created_by_id: currentUserId,
-      // Métadonnées optionnelles
       ...(itemId && { item_id: itemId }),
       ...(itemTitle && { item_title: itemTitle }),
     });
 
     await channel.create();
-
     console.log("✅ Channel créé:", channelId);
 
     return res.json({
@@ -116,7 +128,7 @@ app.post("/stream/create-channel", async (req, res) => {
     });
 
   } catch (err) {
-    console.error("❌ Channel creation error:", err);
+    console.error("❌ Erreur création canal:", err);
     return res.status(500).json({ error: err.message });
   }
 });
