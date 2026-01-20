@@ -22,6 +22,7 @@ import OwnershipVerification from "../components/OwnershipVerification"
 
 import { useStreamChat } from "../contexts/StreamChatContext"
 import { createOrGetChannel } from "../utils/chatUtils"
+import ShareButtons from "../components/ShareButtons"
 
 export default function ItemDetailPage() {
   const { id } = useParams()
@@ -259,6 +260,10 @@ const handleStartChat = async () => {
                 <button className="px-6 py-3 glass rounded-xl hover:bg-muted transition-colors flex items-center justify-center">
                   <Share2 size={20} />
                 </button>
+                {/* <div className="mt-6">
+                  <h3 className="text-lg font-semibold mb-3">Partager cette annonce</h3>
+                  <ShareButtons item={item} />
+                </div> */}
               </div>
             </div>
 

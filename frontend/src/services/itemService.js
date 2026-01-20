@@ -24,33 +24,31 @@ export const itemService = {
 
   // Récupérer tous les items actifs
   async getAllItems(filters = {}) {
+    // Calculer la date limite (4 jours)
     const fourDaysAgo = new Date();
     fourDaysAgo.setDate(fourDaysAgo.getDate() - 4);
-
-    // Récupérer les items
+  
     let query = supabase
       .from("items")
       .select("*")
       .order("created_at", { ascending: false });
-
-    // Filtrer selon le statut et la date
-    // Les items "returned" ne sont visibles que pendant 4 jours
-    query = query.or(`status.eq.active,and(status.eq.claimed,returned_at.gte.${fourDaysAgo.toISOString()})`);
-
+  
+    // ✅ Filtrer: afficher les actifs + les récupérés de moins de 4 jours
+    query = query.or(
+      `status.eq.active,and(status.eq.claimed,returned_at.gte.${fourDaysAgo.toISOString()})`
+    );
+  
     const { data: items, error } = await query;
-
     if (error) throw error;
-
-    // Pour chaque item, récupérer ses images dans item_images
+  
+    // Récupérer les images
     const itemsWithImages = await Promise.all(
       items.map(async (item) => {
-        const { data: imagesData, error: imagesError } = await supabase
+        const { data: imagesData } = await supabase
           .from("item_images")
           .select("image_url")
           .eq("item_id", item.id);
-
-        if (imagesError) console.error(imagesError);
-
+  
         return {
           ...item,
           image: imagesData?.[0]?.image_url || null,
@@ -58,26 +56,24 @@ export const itemService = {
         };
       })
     );
-
-    // Appliquer les filtres après récupération si besoin
+  
+    // Appliquer les filtres
     let filteredItems = itemsWithImages;
-
+  
     if (filters.category && filters.category !== "Tous") {
-      filteredItems = filteredItems.filter(
-        (i) => i.category === filters.category
-      );
+      filteredItems = filteredItems.filter(i => i.category === filters.category);
     }
     if (filters.type) {
-      filteredItems = filteredItems.filter((i) => i.type === filters.type);
+      filteredItems = filteredItems.filter(i => i.type === filters.type);
     }
     if (filters.search) {
-      filteredItems = filteredItems.filter(
-        (i) =>
-          i.title.toLowerCase().includes(filters.search.toLowerCase()) ||
-          i.description.toLowerCase().includes(filters.search.toLowerCase())
+      const search = filters.search.toLowerCase();
+      filteredItems = filteredItems.filter(i =>
+        i.title.toLowerCase().includes(search) ||
+        i.description.toLowerCase().includes(search)
       );
     }
-
+  
     return filteredItems;
   },
 
@@ -112,7 +108,20 @@ export const itemService = {
 
   // Créer un nouvel item
   async createItem(itemData, userId) {
-    const requestId = crypto.randomUUID();
+    const requestId = itemData.requestId || crypto.randomUUID();
+    
+    // Vérifier si cet item existe déjà
+    const { data: existing } = await supabase
+      .from("items")
+      .select("id")
+      .eq("request_id", requestId)
+      .single();
+      
+    if (existing) {
+      console.log('⚠️ Item déjà créé, retour de l\'existant');
+      return existing;
+    }
+    
     const { data, error } = await supabase
       .from("items")
       .insert([
@@ -127,13 +136,12 @@ export const itemService = {
           proof_data: itemData.proofData || null,
           proof_fields_config: itemData.proofFieldsConfig || null,
           verification_required: itemData.verificationRequired !== false,
-          request_id: requestId,
-          status: 'active'
+          request_id: requestId
         },
       ])
       .select()
       .single();
-
+  
     if (error) throw error;
     return data;
   },
