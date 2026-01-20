@@ -5,7 +5,7 @@ import { useAuth } from './AuthContext'
 import { supabase } from '../lib/supabase'
 
 const StreamChatContext = createContext(null)
-
+const baseUrl = import.meta.env.VITE_BASE_URL || "https://obli-up.onrender.com";
 export const useStreamChat = () => {
   const ctx = useContext(StreamChatContext)
   if (!ctx) {
@@ -56,7 +56,7 @@ export const StreamChatProvider = ({ children }) => {
 
         if (!accessToken) throw new Error('No access token');
 
-        const res = await fetch(`http://localhost:3000/stream/token`, {
+        const res = await fetch(`${baseUrl}/stream/token`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${accessToken}`,

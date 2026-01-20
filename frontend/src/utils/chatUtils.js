@@ -43,7 +43,7 @@ async function ensureChannelMembers(channel, requiredMembers) {
         throw new Error('No authentication token');
       }
 
-      await fetch(`http://localhost:3000/stream/delete-channel/${channel.id}`, {
+      await fetch(`https://obli-up.onrender.com/stream/delete-channel/${channel.id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -64,7 +64,7 @@ async function ensureChannelMembers(channel, requiredMembers) {
 
     console.log('🔄 Appel backend pour ajouter les membres...');
 
-    const response = await fetch('http://localhost:3000/stream/add-members', {
+    const response = await fetch('https://obli-up.onrender.com/stream/add-members', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
@@ -173,7 +173,7 @@ export async function createOrGetChannel(
 
     console.log('🔄 Appel backend pour création...');
 
-    const response = await fetch('http://localhost:3000/stream/create-channel', {
+    const response = await fetch('https://obli-up.onrender.com/stream/create-channel', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
