@@ -1,12 +1,51 @@
 "use client"
 
+import { useState } from "react"
 import { motion } from "framer-motion"
-import { Mail, Phone, MapPin, Send } from "lucide-react"
+import { Mail, Phone, MapPin, Send, Loader2, CheckCircle } from "lucide-react"
+import { formService } from "../services/formService"
 
 export default function ContactPage() {
-  const handleSubmit = (e) => {
+  const [formData, setFormData] = useState({
+    fullName: "",
+    email: "",
+    subject: "",
+    message: ""
+  })
+  const [loading, setLoading] = useState(false)
+  const [submitted, setSubmitted] = useState(false)
+  const [error, setError] = useState("")
+
+  const handleChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }))
+    setError("") // Réinitialiser l'erreur quand l'utilisateur tape
+  }
+
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    console.log("Contact form submitted")
+    setLoading(true)
+    setError("")
+
+    try {
+      await formService.sendContactMessage(formData)
+      setSubmitted(true)
+      
+      // Réinitialiser le formulaire après 3 secondes
+      setTimeout(() => {
+        setSubmitted(false)
+        setFormData({
+          fullName: "",
+          email: "",
+          subject: "",
+          message: ""
+        })
+      }, 3000)
+    } catch (err) {
+      console.error("Erreur envoi message:", err)
+      setError("Une erreur s'est produite. Veuillez réessayer.")
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -34,57 +73,99 @@ export default function ContactPage() {
           >
             <h2 className="text-2xl font-bold mb-6">Envoyez-nous un message</h2>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold mb-2">Nom complet</label>
-                <input
-                  type="text"
-                  placeholder="John Doe"
-                  className="w-full px-4 py-3 bg-input border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-foreground"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold mb-2">Email</label>
-                <input
-                  type="email"
-                  placeholder="john@example.com"
-                  className="w-full px-4 py-3 bg-input border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-foreground"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold mb-2">Sujet</label>
-                <input
-                  type="text"
-                  placeholder="De quoi s'agit-il ?"
-                  className="w-full px-4 py-3 bg-input border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-foreground"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold mb-2">Message</label>
-                <textarea
-                  rows={6}
-                  placeholder="Votre message..."
-                  className="w-full px-4 py-3 bg-input border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-foreground resize-none"
-                  required
-                />
-              </div>
-
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                type="submit"
-                className="w-full px-6 py-3 bg-primary text-primary-foreground rounded-xl font-semibold glow-primary hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
+            {submitted ? (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="text-center py-12"
               >
-                <Send size={20} />
-                Envoyer le message
-              </motion.button>
-            </form>
+                <CheckCircle className="mx-auto mb-4 text-primary" size={64} />
+                <h3 className="text-2xl font-bold mb-2">Message envoyé !</h3>
+                <p className="text-muted-foreground">
+                  Nous vous répondrons dans les plus brefs délais.
+                </p>
+              </motion.div>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold mb-2">Nom complet</label>
+                  <input
+                    type="text"
+                    placeholder="John Doe"
+                    value={formData.fullName}
+                    onChange={(e) => handleChange("fullName", e.target.value)}
+                    className="w-full px-4 py-3 bg-input border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-foreground"
+                    required
+                    disabled={loading}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold mb-2">Email</label>
+                  <input
+                    type="email"
+                    placeholder="john@example.com"
+                    value={formData.email}
+                    onChange={(e) => handleChange("email", e.target.value)}
+                    className="w-full px-4 py-3 bg-input border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-foreground"
+                    required
+                    disabled={loading}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold mb-2">Sujet</label>
+                  <input
+                    type="text"
+                    placeholder="De quoi s'agit-il ?"
+                    value={formData.subject}
+                    onChange={(e) => handleChange("subject", e.target.value)}
+                    className="w-full px-4 py-3 bg-input border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-foreground"
+                    required
+                    disabled={loading}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold mb-2">Message</label>
+                  <textarea
+                    rows={6}
+                    placeholder="Votre message..."
+                    value={formData.message}
+                    onChange={(e) => handleChange("message", e.target.value)}
+                    className="w-full px-4 py-3 bg-input border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-foreground resize-none"
+                    required
+                    disabled={loading}
+                  />
+                </div>
+
+                {error && (
+                  <div className="bg-destructive/10 border border-destructive text-destructive px-4 py-3 rounded-xl text-sm">
+                    {error}
+                  </div>
+                )}
+
+                <motion.button
+                  whileHover={{ scale: loading ? 1 : 1.02 }}
+                  whileTap={{ scale: loading ? 1 : 0.98 }}
+                  type="submit"
+                  disabled={loading}
+                  className="w-full px-6 py-3 bg-primary text-primary-foreground rounded-xl font-semibold glow-primary hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 size={20} className="animate-spin" />
+                      Envoi en cours...
+                    </>
+                  ) : (
+                    <>
+                      <Send size={20} />
+                      Envoyer le message
+                    </>
+                  )}
+                </motion.button>
+              </form>
+            )}
           </motion.div>
 
           {/* Contact Info */}
@@ -104,8 +185,8 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <div className="font-semibold mb-1">Email</div>
-                    <a href="mailto:contact@obli-swart.com" className="text-muted-foreground hover:text-primary">
-                      contact@obli-swart.com
+                    <a href="mailto:contact@obli.space" className="text-muted-foreground hover:text-primary">
+                      contact@obli.space
                     </a>
                   </div>
                 </div>
@@ -117,7 +198,7 @@ export default function ContactPage() {
                   <div>
                     <div className="font-semibold mb-1">Téléphone</div>
                     <a href="tel:+33123456789" className="text-muted-foreground hover:text-secondary">
-                      +33 1 23 45 67 89
+                      +237 696 99 58 79
                     </a>
                   </div>
                 </div>
@@ -129,9 +210,9 @@ export default function ContactPage() {
                   <div>
                     <div className="font-semibold mb-1">Adresse</div>
                     <p className="text-muted-foreground">
-                      123 Avenue des Champs-Élysées
+                      Rue 5N 037, Denver Afrique Media
                       <br />
-                      75008 Paris, France
+                      Bonamoussadi, Douala
                     </p>
                   </div>
                 </div>

@@ -13,7 +13,11 @@ import {
   MessageSquare,
   Share2,
   Lock,
+  Send,
+  Loader2,
+  CheckCircle,
 } from "lucide-react"
+import { formService } from "../services/formService"
 
 import { useLanguage } from "../contexts/LanguageContext"
 import { useAuth } from "../contexts/AuthContext"
@@ -39,6 +43,51 @@ export default function ItemDetailPage() {
   const [showContactForm, setShowContactForm] = useState(false)
   const [hasAccess, setHasAccess] = useState(false)
   const [showVerification, setShowVerification] = useState(false)
+
+ // 2. États à ajouter au début du composant :
+ const [contactForm, setContactForm] = useState({
+  name: "",
+  email: "",
+  message: ""
+})
+const [sendingMessage, setSendingMessage] = useState(false)
+const [messageSent, setMessageSent] = useState(false)
+const [messageError, setMessageError] = useState("")
+
+const handleSendMessage = async () => {
+  if (!contactForm.name || !contactForm.email || !contactForm.message) {
+    setMessageError("Veuillez remplir tous les champs")
+    return
+  }
+
+  setSendingMessage(true)
+  setMessageError("")
+
+  try {
+    await formService.sendItemMessage({
+      itemId: item.id,
+      senderId: user?.id || null,
+      receiverId: item.user_id,
+      senderName: contactForm.name,
+      senderEmail: contactForm.email,
+      message: contactForm.message
+    })
+
+    setMessageSent(true)
+    
+    // Réinitialiser après 3 secondes
+    setTimeout(() => {
+      setMessageSent(false)
+      setShowContactForm(false)
+      setContactForm({ name: "", email: "", message: "" })
+    }, 3000)
+  } catch (error) {
+    console.error("Erreur envoi message:", error)
+    setMessageError("Une erreur s'est produite. Veuillez réessayer.")
+  } finally {
+    setSendingMessage(false)
+  }
+}
 
   /* =========================
      DATA FETCH
@@ -269,56 +318,107 @@ const handleStartChat = async () => {
 
             {/* Contact Form */}
             {showContactForm && hasAccess && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                className="glass rounded-2xl p-6 mb-6"
-              >
-                <h3 className="text-xl font-semibold mb-4">Envoyer un message</h3>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-semibold mb-2">Votre nom</label>
-                    <input
-                      type="text"
-                      className="w-full px-4 py-3 bg-input border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary"
-                      placeholder="John Doe"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold mb-2">Email</label>
-                    <input
-                      type="email"
-                      className="w-full px-4 py-3 bg-input border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary"
-                      placeholder="john@example.com"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold mb-2">Message</label>
-                    <textarea
-                      rows={4}
-                      className="w-full px-4 py-3 bg-input border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary resize-none"
-                      placeholder="Bonjour, je pense que cet objet m'appartient..."
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      alert('Message envoyé ! (Fonctionnalité à implémenter)')
-                    }}
-                    className="w-full px-6 py-3 bg-primary text-primary-foreground rounded-xl font-semibold hover:bg-primary/90 transition-colors"
-                  >
-                    Envoyer le message
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleStartChat}
-                    className="w-full px-6 py-3 bg-secondary text-secondary-foreground rounded-xl font-semibold hover:bg-secondary/90 transition-colors"
-                  >
-                    Démarrer une Conversation
-                  </button>
-                </div>
-              </motion.div>
-            )}
+  <motion.div
+    initial={{ opacity: 0, height: 0 }}
+    animate={{ opacity: 1, height: "auto" }}
+    className="glass rounded-2xl p-6 mb-6"
+  >
+    <h3 className="text-xl font-semibold mb-4">Envoyer un message</h3>
+    
+    {messageSent ? (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="text-center py-8"
+      >
+        <CheckCircle className="mx-auto mb-4 text-primary" size={48} />
+        <h4 className="text-lg font-bold mb-2">Message envoyé !</h4>
+        <p className="text-sm text-muted-foreground mb-4">
+          Le propriétaire a été notifié de votre message.
+        </p>
+        <button
+          onClick={() => setShowContactForm(false)}
+          className="px-6 py-2 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition-colors"
+        >
+          Fermer
+        </button>
+      </motion.div>
+    ) : (
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-semibold mb-2">Votre nom</label>
+          <input
+            type="text"
+            value={contactForm.name}
+            onChange={(e) => setContactForm(prev => ({ ...prev, name: e.target.value }))}
+            className="w-full px-4 py-3 bg-input border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary"
+            placeholder="John Doe"
+            disabled={sendingMessage}
+          />
+        </div>
+        
+        <div>
+          <label className="block text-sm font-semibold mb-2">Email</label>
+          <input
+            type="email"
+            value={contactForm.email}
+            onChange={(e) => setContactForm(prev => ({ ...prev, email: e.target.value }))}
+            className="w-full px-4 py-3 bg-input border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary"
+            placeholder="john@example.com"
+            disabled={sendingMessage}
+          />
+        </div>
+        
+        <div>
+          <label className="block text-sm font-semibold mb-2">Message</label>
+          <textarea
+            rows={4}
+            value={contactForm.message}
+            onChange={(e) => setContactForm(prev => ({ ...prev, message: e.target.value }))}
+            className="w-full px-4 py-3 bg-input border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+            placeholder="Bonjour, je pense que cet objet m'appartient..."
+            disabled={sendingMessage}
+          />
+        </div>
+
+        {messageError && (
+          <div className="bg-destructive/10 border border-destructive text-destructive px-4 py-3 rounded-xl text-sm">
+            {messageError}
+          </div>
+        )}
+        
+        <button
+          type="button"
+          onClick={handleSendMessage}
+          disabled={sendingMessage || !contactForm.name || !contactForm.email || !contactForm.message}
+          className="w-full px-6 py-3 bg-primary text-primary-foreground rounded-xl font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        >
+          {sendingMessage ? (
+            <>
+              <Loader2 className="animate-spin" size={20} />
+              Envoi en cours...
+            </>
+          ) : (
+            <>
+              <Send size={20} />
+              Envoyer le message
+            </>
+          )}
+        </button>
+        
+        <button
+          type="button"
+          onClick={handleStartChat}
+          disabled={sendingMessage}
+          className="w-full px-6 py-3 bg-secondary text-secondary-foreground rounded-xl font-semibold hover:bg-secondary/90 transition-colors flex items-center justify-center gap-2"
+        >
+          <MessageSquare size={20} />
+          Démarrer une Conversation
+        </button>
+      </div>
+    )}
+  </motion.div>
+)}
 
             <div className="glass rounded-2xl p-6">
               <h3 className="font-semibold mb-2 flex items-center gap-2">

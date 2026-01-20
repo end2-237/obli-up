@@ -1,10 +1,9 @@
 // frontend/src/pages/ReportItemPage.jsx
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { useRef } from "react";
 
 import {
   Upload,
@@ -18,7 +17,6 @@ import {
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { itemService } from "../services/itemService";
-import SecureProofFields from "../components/SecureProofFields";
 import SecureReportForm from "../components/SecureProofFields";
 
 const categories = [
@@ -43,8 +41,11 @@ export default function ReportItemPage() {
   const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
-  const [hasReviewedImagesStep, setHasReviewedImagesStep] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState("");
+  
+  // ✅ CORRECTION : Utiliser useRef pour éviter les soumissions multiples
   const isSubmittingRef = useRef(false);
+  const requestIdRef = useRef(crypto.randomUUID());
 
   const [formData, setFormData] = useState({
     type: "lost",
@@ -90,11 +91,18 @@ export default function ReportItemPage() {
     }
   };
 
+  // ✅ CORRECTION : Soumission avec upload d'images AVANT navigation
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (isSubmittingRef.current) return;
-
+    
+    // Vérifier qu'on est bien à la dernière étape
     if (currentStep !== steps.length) {
+      return;
+    }
+
+    // ✅ Empêcher les soumissions multiples
+    if (isSubmittingRef.current) {
+      console.log('⚠️ Soumission déjà en cours, abandon');
       return;
     }
 
@@ -105,24 +113,45 @@ export default function ReportItemPage() {
     }
 
     try {
+      isSubmittingRef.current = true;
       setLoading(true);
+      setUploadProgress("Création de l'annonce...");
 
-      // 1. Créer l'item
-      const newItem = await itemService.createItem(formData, user.id);
+      // 1. Créer l'item avec un requestId unique
+      const newItem = await itemService.createItem({
+        ...formData,
+        requestId: requestIdRef.current
+      }, user.id);
 
-      // 2. Upload des images si présentes
+      console.log('✅ Item créé:', newItem.id);
+
+      // 2. Upload des images SI présentes
       if (formData.images.length > 0) {
-        await itemService.uploadImages(newItem.id, formData.images);
-        navigate("/dashboard");
+        setUploadProgress(`Upload des images (0/${formData.images.length})...`);
+        
+        for (let i = 0; i < formData.images.length; i++) {
+          setUploadProgress(`Upload des images (${i + 1}/${formData.images.length})...`);
+          await itemService.uploadImages(newItem.id, [formData.images[i]]);
+        }
+        
+        console.log('✅ Images uploadées');
       }
 
-      // Succès
+      // 3. Succès - Navigation APRÈS tout est terminé
+      setUploadProgress("Publication réussie !");
       alert("✅ Objet déclaré avec succès !");
+      
+      // Petit délai pour que l'utilisateur voie le message
+      setTimeout(() => {
+        navigate("/dashboard");
+      }, 500);
+
     } catch (error) {
-      console.error("Erreur lors de la déclaration:", error);
-      alert("❌ Une erreur s'est produite. Veuillez réessayer.");
+      console.error("❌ Erreur lors de la déclaration:", error);
+      alert(`❌ Erreur: ${error.message || 'Une erreur est survenue'}`);
     } finally {
       setLoading(false);
+      setUploadProgress("");
       isSubmittingRef.current = false;
     }
   };
@@ -137,8 +166,6 @@ export default function ReportItemPage() {
         return formData.location && formData.date;
       case 4:
         return formData.images.length > 0;
-      // case 4:
-      //   return hasReviewedImagesStep;
       default:
         return false;
     }
@@ -416,7 +443,7 @@ export default function ReportItemPage() {
                 exit={{ opacity: 0, x: -20 }}
                 className="glass rounded-2xl p-6"
               >
-                <h2 className="text-2xl font-bold mb-6">Photos (optionnel)</h2>
+                <h2 className="text-2xl font-bold mb-6">Photos</h2>
 
                 <div className="space-y-4">
                   <div className="border-2 border-dashed border-border rounded-xl p-8 text-center hover:border-primary transition-colors">
@@ -427,6 +454,7 @@ export default function ReportItemPage() {
                       accept="image/*"
                       onChange={handleImageUpload}
                       className="hidden"
+                      disabled={loading}
                     />
                     <label htmlFor="image-upload" className="cursor-pointer">
                       <Upload
@@ -454,19 +482,21 @@ export default function ReportItemPage() {
                           <button
                             type="button"
                             onClick={() => removeImage(index)}
-                            className="absolute top-2 right-2 p-1 bg-destructive text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                            disabled={loading}
+                            className="absolute top-2 right-2 p-1 bg-destructive text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
                           >
                             <X size={16} />
                           </button>
                         </div>
                       ))}
-                      {/* <button
-                        type="button"
-                        onClick={() => setHasReviewedImagesStep(true)}
-                        className="px-6 py-3 bg-primary text-primary-foreground rounded-xl font-semibold hover:bg-primary/90 transition-colors"
-                      >
-                        Continuer sans ajouter d’autres photos
-                      </button> */}
+                    </div>
+                  )}
+
+                  {/* ✅ Indicateur de progression */}
+                  {uploadProgress && (
+                    <div className="bg-primary/10 border border-primary rounded-xl p-4 text-center">
+                      <Loader2 className="animate-spin mx-auto mb-2 text-primary" size={24} />
+                      <p className="text-sm font-semibold text-primary">{uploadProgress}</p>
                     </div>
                   )}
                 </div>
@@ -499,13 +529,13 @@ export default function ReportItemPage() {
             ) : (
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || !isStepValid()}
                 className="px-8 py-3 bg-secondary text-secondary-foreground rounded-xl font-semibold hover:bg-secondary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 glow-secondary"
               >
                 {loading ? (
                   <>
                     <Loader2 className="animate-spin" size={20} />
-                    Publication...
+                    Publication en cours...
                   </>
                 ) : (
                   <>

@@ -22,6 +22,8 @@ import {
 import { useTranslation } from "react-i18next";
 import { QRCodeSVG } from "qrcode.react";
 import { useAuth } from "../contexts/AuthContext";
+import { formService } from "../services/formService"
+import { useNavigate } from "react-router-dom";
 
 const QR_PACKAGES = [
   {
@@ -79,6 +81,8 @@ const OBJECT_TYPES = [
 ];
 
 export default function QRStorePageNew() {
+  const navigate = useNavigate();
+
   const { t } = useTranslation();
   const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState(1); // 1: Package, 2: Personnalisation, 3: Livraison, 4: Paiement, 5: Confirmation
@@ -112,14 +116,50 @@ export default function QRStorePageNew() {
     }));
   };
 
-  const handlePayment = () => {
+  const handlePayment = async () => {
+    if (!user) {
+      alert("Vous devez être connecté pour passer commande");
+      navigate("/auth");
+      return;
+    }
+  
     setIsProcessing(true);
-    // Simulation de paiement
-    setTimeout(() => {
-      setIsProcessing(false);
+  
+    try {
+      // Créer la commande dans la base de données
+      const orderData = {
+        userId: user.id,
+        packageId: selectedPackage.id,
+        packageName: selectedPackage.name,
+        quantity: selectedPackage.quantity,
+        price: selectedPackage.price,
+        deliveryFee: deliveryFee,
+        totalPrice: totalPrice + deliveryFee,
+        personalInfo: personalInfo,
+        qrConfig: qrConfig
+      };
+  
+      const order = await formService.createQROrder(orderData);
+      console.log("✅ Commande créée:", order.id);
+  
+      // TODO: Intégrer le système de paiement réel (Stripe, PayPal, etc.)
+      // Simulation du paiement pour le moment
+      await new Promise(resolve => setTimeout(resolve, 2000));
+  
+      // Passer à l'étape de confirmation
       setCurrentStep(5);
-    }, 2000);
+      
+      // Envoyer un email de confirmation (optionnel)
+      // await sendConfirmationEmail(order.id);
+  
+    } catch (error) {
+      console.error("❌ Erreur lors de la commande:", error);
+      alert(`Erreur: ${error.message || "Une erreur est survenue lors de la commande"}`);
+    } finally {
+      setIsProcessing(false);
+    }
   };
+  
 
   const totalPrice = selectedPackage?.price || 0;
   const deliveryFee = 1000;
