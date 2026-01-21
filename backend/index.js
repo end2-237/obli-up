@@ -80,18 +80,28 @@ async function initiatePayUnitPayment(paymentData) {
     }
 
     const payload = {
-      total_amount: parseInt(amount),
+      total_amount: Number(amount),
       currency: "XAF",
-      transaction_id: transactionId,
-      gateway,
-      phone_number: cleanPhone,
+    
+      transaction_id: `TXN_${transactionId}`,
+    
+      gateway: "CM_ORANGE", // ou CM_MTNMOMO
+    
+      phone_number: cleanPhone, // ex: "690123456"
+    
+      return_url: `${FRONTEND_URL}/payment/success?tx=${transactionId}`,
       notify_url: callbackUrl,
+    
       payment_country: "CM",
+      redirect_on_failed: "yes",
+    
       custom_fields: {
-        description,
+        order_id: transactionId,
+        description: description || "Paiement",
         order_type: orderType,
       },
     };
+    
 
     console.log("📦 Payload PayUnit FINAL:", {
       ...payload,
