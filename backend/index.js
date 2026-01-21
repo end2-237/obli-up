@@ -85,9 +85,9 @@ async function initiatePayUnitPayment(paymentData) {
     
       transaction_id: `TXN_${transactionId}`,
     
-      gateway: "CM_ORANGE", // ou CM_MTNMOMO
+      gateway: "CM_ORANGE",
     
-      phone_number: cleanPhone, // ex: "690123456"
+      phone_number: cleanPhone,
     
       return_url: `${FRONTEND_URL}/payment/success?tx=${transactionId}`,
       notify_url: callbackUrl,
@@ -232,119 +232,42 @@ async function handlePaymentSuccess(transaction) {
  */
 app.post("/payunit/init", async (req, res) => {
   try {
-    const authHeader = req.headers.authorization;
-    
-    if (!authHeader) {
-      return res.status(401).json({ error: "Missing authorization header" });
-    }
+    const { amount, phoneNumber, gateway } = req.body;
 
-    const jwt = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: authError } = await supabase.auth.getUser(jwt);
+    const transactionId = `TXN_${Date.now()}`;
 
-    if (authError || !user) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
+    await client.collections.initiatePayment({
+      total_amount: amount,
+      currency: "XAF",
+      transaction_id: transactionId,
+      payment_country: "CM",
+      pay_with: gateway,
+      notify_url: `${process.env.BACKEND_URL}/payunit/callback`,
+      return_url: `${process.env.FRONTEND_URL}/payment/success`,
+    });
 
-    const {
+    const paymentResult = await client.collections.makePayment({
       amount,
-      currency,
-      description,
-      orderId,
-      orderType,
-      pay_with,
-      phoneNumber,
-    } = req.body;
-
-    // Validation
-    if (!amount || !orderId || !orderType) {
-      return res.status(400).json({ error: "Missing required fields" });
-    }
-
-    if (!pay_with) {
-      return res.status(400).json({ error: "Payment method required" });
-    }
-
-    if (!phoneNumber) {
-      return res.status(400).json({ error: "Phone number required for Mobile Money" });
-    }
-
-    console.log("💳 Initialisation paiement Mobile Money pour:", user.email);
-
-    // 1. Créer la transaction dans Supabase
-    const { data: transaction, error: txError } = await supabase
-      .from("transactions")
-      .insert([
-        {
-          order_id: orderId,
-          order_type: orderType,
-          amount: amount,
-          currency: currency || "XAF",
-          customer_email: user.email,
-          customer_name: user.user_metadata?.name || user.email.split("@")[0],
-          customer_phone: phoneNumber,
-          description: description,
-          status: "pending",
-        },
-      ])
-      .select()
-      .single();
-
-    if (txError) {
-      console.error("❌ Erreur création transaction:", txError);
-      return res.status(500).json({ error: "Failed to create transaction" });
-    }
-
-    console.log("✅ Transaction créée:", transaction.id);
-
-    // 2. Initialiser le paiement Mobile Money PayUnit
-    const backendUrl = process.env.BACKEND_URL || `${req.protocol}://${req.get('host')}`;
-    
-    const payunitResponse = await initiatePayUnitPayment({
-      transactionId: transaction.id,
-      amount: amount,
-      currency: currency || "XAF",
-      description: description || `Paiement ${orderType}`,
-      phoneNumber: phoneNumber,
-      callbackUrl: `${backendUrl}/payunit/callback`,
-      returnUrl: `${FRONTEND_URL}/payment/success?tx=${transaction.id}`,
-      pay_with: pay_with,
-      orderType: orderType,
+      gateway,
+      currency: "XAF",
+      transaction_id: transactionId,
+      phone_number: phoneNumber.replace(/^237/, ""),
+      notify_url: `${process.env.BACKEND_URL}/payunit/callback`,
+      return_url: `${process.env.FRONTEND_URL}/payment/success`,
     });
 
-    // 3. Mettre à jour la transaction avec les infos PayUnit
-    await supabase
-      .from("transactions")
-      .update({
-        payunit_reference: payunitResponse.reference,
-        payunit_payment_url: payunitResponse.payment_url,
-        payunit_status: payunitResponse.status,
-        payunit_message: payunitResponse.message,
-      })
-      .eq("id", transaction.id);
-
-    console.log("✅ Paiement Mobile Money initialisé:", {
-      transactionId: transaction.id,
-      status: payunitResponse.status,
-      message: payunitResponse.message,
-    });
-
-    // 4. Retourner les infos au client
-    return res.json({
+    res.json({
       success: true,
-      transactionId: transaction.id,
-      paymentUrl: payunitResponse.payment_url,
-      reference: payunitResponse.reference,
-      status: payunitResponse.status,
-      message: payunitResponse.message,
+      transactionId,
+      paymentResult,
     });
 
-  } catch (error) {
-    console.error("❌ Erreur /payunit/init:", error);
-    return res.status(500).json({
-      error: error.message || "Internal server error",
-    });
+  } catch (err) {
+    console.error("❌ PayUnit error:", err.response?.data || err.message);
+    res.status(500).json({ error: err.message });
   }
 });
+
 
 /**
  * GET /payunit/status/:transactionId
