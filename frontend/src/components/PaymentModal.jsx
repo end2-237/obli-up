@@ -53,7 +53,7 @@ export default function PaymentModal({
         description: description,
         orderId: orderId,
         orderType: orderType,
-        pay_with: selectedMethod,
+        gateway: selectedMethod,
         phoneNumber: phoneNumber,
       };
   

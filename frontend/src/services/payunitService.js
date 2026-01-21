@@ -16,7 +16,7 @@ export const payunitService = {
         description,
         orderId,
         orderType,
-        pay_with,
+        gateway,
         phoneNumber,
       } = paymentData;
   
@@ -33,7 +33,7 @@ export const payunitService = {
         throw new Error("Type de commande requis");
       }
   
-      if (!pay_with) {
+      if (!gateway) {
         throw new Error("Méthode de paiement requise");
       }
 
@@ -52,7 +52,7 @@ export const payunitService = {
         currency,
         orderId,
         orderType,
-        pay_with,
+        gateway,
         phone: `***${cleanPhone.slice(-4)}`, // Masquer dans les logs
       });
   
@@ -79,7 +79,7 @@ export const payunitService = {
           description,
           orderId,
           orderType,
-          pay_with,
+          gateway,
           phoneNumber: cleanPhone,
         }),
       });
