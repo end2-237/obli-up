@@ -39,6 +39,14 @@ const payunitClient = new PayunitClient({
   timeout: 15000,
 });
 
+const client = new PayunitClient({
+  apiKey: process.env.PAYUNIT_API_KEY,
+  apiUsername: process.env.PAYUNIT_USERNAME,
+  apiPassword: process.env.PAYUNIT_PASSWORD,
+  mode: process.env.PAYUNIT_MODE || "live", // sandbox | live
+  timeout: 15000,
+});
+
 // ============================================
 // FONCTIONS PAYUNIT
 // ============================================
