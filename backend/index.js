@@ -47,6 +47,134 @@ const payunitClient = new PayunitClient({
  * POST /payunit/init
  * Initialiser un paiement Mobile Money
  */
+// Dans votre backend/index.js, remplacez la section FONCTIONS PAYUNIT par ceci :
+
+// ============================================
+// FONCTIONS PAYUNIT
+// ============================================
+
+/**
+ * Initialiser un paiement Mobile Money PayUnit (direct)
+ */
+async function initiatePayUnitPayment(paymentData) {
+  try {
+    const {
+      transactionId,
+      amount,
+      currency = "XAF",
+      description,
+      callbackUrl,
+      returnUrl,
+      pay_with,
+      phoneNumber, // Numéro de téléphone du client
+    } = paymentData;
+
+    console.log("📤 Initialisation paiement Mobile Money PayUnit SDK...");
+
+    // Mapper les méthodes de paiement vers les gateways PayUnit
+    const gatewayMap = {
+      "CM_ORANGE": "CM_ORANGEMOMO",
+      "CM_MTN": "CM_MTNMOMO",
+    };
+
+    const gateway = gatewayMap[pay_with] || "CM_ORANGEMOMO";
+
+    // Validation du numéro de téléphone
+    if (!phoneNumber) {
+      throw new Error("Numéro de téléphone requis pour Mobile Money");
+    }
+
+    // Nettoyer le numéro (retirer espaces, +237, etc.)
+    const cleanPhone = phoneNumber.replace(/[\s\+]/g, "").replace(/^237/, "");
+    
+    if (cleanPhone.length !== 9) {
+      throw new Error("Numéro de téléphone invalide (doit contenir 9 chiffres)");
+    }
+
+    const payload = {
+      total_amount: parseInt(amount),
+      currency: currency,
+      transaction_id: transactionId,
+      gateway: gateway, // CM_ORANGEMOMO ou CM_MTNMOMO
+      phone_number: cleanPhone, // 6XXXXXXXX (sans +237)
+      return_url: returnUrl,
+      notify_url: callbackUrl,
+      payment_country: "CM",
+      redirect_on_failed: "yes",
+      custom_fields: {
+        description: description || "Paiement",
+        order_type: paymentData.orderType || "order",
+      },
+    };
+
+    console.log("📦 Payload PayUnit Mobile Money:", {
+      ...payload,
+      phone_number: `***${cleanPhone.slice(-4)}`, // Masquer le numéro dans les logs
+    });
+
+    // Utiliser la méthode Mobile Money directe
+    const paymentRequest = await payunitClient.collections.initiateAndMakePaymentMobileMoney(payload);
+
+    console.log("✅ Réponse PayUnit Mobile Money:", paymentRequest);
+
+    // La réponse contient le statut du paiement
+    return {
+      reference: paymentRequest?.transaction_id || transactionId,
+      payment_url: paymentRequest.payment_url || paymentRequest.url,
+      status: paymentRequest.transaction_status || "pending",
+      message: paymentRequest.message,
+      data: paymentRequest,
+    };
+  } catch (error) {
+    console.error("❌ Erreur initiatePayUnitPayment:", error.response?.data || error.message);
+    throw error;
+  }
+}
+
+/**
+ * Vérifier le statut d'un paiement PayUnit
+ */
+async function checkPayUnitStatus(transactionId) {
+  try {
+    console.log("🔍 Vérification statut PayUnit SDK:", transactionId);
+
+    // Utiliser la méthode du SDK pour vérifier le statut
+    const result = await payunitClient.collections.getTransactionStatus({
+      transaction_id: transactionId,
+    });
+    
+    console.log("📊 Statut PayUnit:", result);
+
+    return {
+      status: result.transaction_status || result.status,
+      ...result,
+    };
+  } catch (error) {
+    console.error("❌ Erreur checkPayUnitStatus:", error.response?.data || error.message);
+    throw error;
+  }
+}
+
+/**
+ * Mapper le statut PayUnit vers notre système
+ */
+function mapPayUnitStatus(payunitStatus) {
+  const statusMap = {
+    "successful": "success",
+    "success": "success",
+    "completed": "success",
+    "paid": "success",
+    "pending": "pending",
+    "processing": "pending",
+    "initiated": "pending",
+    "failed": "failed",
+    "cancelled": "cancelled",
+    "canceled": "cancelled",
+    "expired": "expired",
+  };
+  return statusMap[payunitStatus?.toLowerCase()] || "pending";
+}
+
 app.post("/payunit/init", async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
