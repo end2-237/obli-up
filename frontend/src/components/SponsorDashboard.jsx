@@ -15,8 +15,8 @@ export default function SponsorDashboard({ userId, userEmail }) {
   );  
 
 
-  const REWARD_THRESHOLD = 200;
-  const REWARD_AMOUNT = 10000;
+  const REWARD_THRESHOLD = 15;
+  const REWARD_AMOUNT = 500;
 
   useEffect(() => {
     if (userId) {

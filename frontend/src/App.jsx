@@ -21,6 +21,14 @@ function App() {
   return (
     <AnimatePresence mode="wait">
       <Routes>
+          <Route
+            path="chat/:channelId"
+            element={
+              <ProtectedRoute>
+                <ChatPage />
+              </ProtectedRoute>
+            }
+          />
         <Route path="/" element={<Layout />}>
           <Route index element={<HomePage />} />
           <Route path="items" element={<ItemListingPage />} />
@@ -40,14 +48,6 @@ function App() {
             element={
               <ProtectedRoute>
                 <DashboardPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="chat/:channelId"
-            element={
-              <ProtectedRoute>
-                <ChatPage />
               </ProtectedRoute>
             }
           />

@@ -12,7 +12,9 @@ import {
   CreditCard,
   MessageSquare,
   X,
+  AlertCircle,
 } from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
 import { payunitService } from "../services/payunitService";
 import PaymentModal from "./PaymentModal";
 
