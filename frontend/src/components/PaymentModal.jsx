@@ -42,7 +42,7 @@ export default function PaymentModal({
         description: description,
         orderId: orderId,
         orderType: orderType,
-        gateway: selectedMethod, 
+        pay_with: selectedMethod, 
       };
   
       const result = await payunitService.initiatePayment(paymentData);

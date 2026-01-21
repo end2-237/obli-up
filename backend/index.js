@@ -55,7 +55,7 @@ async function initiatePayUnitPayment(paymentData) {
       description,
       callbackUrl,
       returnUrl,
-      gateway,
+      pay_with,
     } = paymentData;
 
     console.log("📤 Initialisation paiement PayUnit SDK...");
@@ -71,8 +71,8 @@ async function initiatePayUnitPayment(paymentData) {
     };
 
     
-    if (gateway) {
-      payload.pay_with = gateway;
+    if (pay_with) {
+      payload.pay_with = pay_with;
     }
 
     console.log("📦 Payload PayUnit:", payload);

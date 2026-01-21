@@ -16,7 +16,7 @@ export const payunitService = {
         description,
         orderId,
         orderType,
-        gateway,
+        pay_with = "CM_ORANGE",
       } = paymentData;
   
       // Validation
@@ -32,7 +32,7 @@ export const payunitService = {
         throw new Error("Type de commande requis");
       }
   
-      if (!gateway) {
+      if (!pay_with) {
         throw new Error("Méthode de paiement requise");
       }
   
@@ -41,7 +41,7 @@ export const payunitService = {
         currency,
         orderId,
         orderType,
-        gateway: "CM_ORANGE",
+        pay_with: "CM_ORANGE",
       });
   
       // Récupérer le token d'authentification
@@ -67,7 +67,7 @@ export const payunitService = {
           description,
           orderId,
           orderType,
-          paymentMethod,
+          pay_with: "CM_ORANGE",
         }),
       });
   
@@ -94,9 +94,7 @@ export const payunitService = {
   },
   
 
-  /**
-   * Vérifier le statut d'une transaction
-   */
+  
   async checkTransactionStatus(transactionId) {
     try {
       if (!transactionId) {
