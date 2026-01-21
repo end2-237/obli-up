@@ -22,9 +22,10 @@ import {
 import { useTranslation } from "react-i18next";
 import { QRCodeSVG } from "qrcode.react";
 import { useAuth } from "../contexts/AuthContext";
-import { formService } from "../services/formService"
+import { formService } from "../services/formService";
 import { useNavigate } from "react-router-dom";
-
+import { payunitService } from "../services/payunitService";
+import PaymentModal from "../components/PaymentModal";
 const QR_PACKAGES = [
   {
     id: 1,
@@ -87,6 +88,9 @@ export default function QRStorePageNew() {
   const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState(1); // 1: Package, 2: Personnalisation, 3: Livraison, 4: Paiement, 5: Confirmation
   const [selectedPackage, setSelectedPackage] = useState(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [currentOrder, setCurrentOrder] = useState(null);
+
   const [personalInfo, setPersonalInfo] = useState({
     fullName: user?.user_metadata?.name || "",
     email: user?.email || "",
@@ -116,6 +120,7 @@ export default function QRStorePageNew() {
     }));
   };
 
+
   const handlePayment = async () => {
     if (!user) {
       alert("Vous devez être connecté pour passer commande");
@@ -126,7 +131,7 @@ export default function QRStorePageNew() {
     setIsProcessing(true);
   
     try {
-      // Créer la commande dans la base de données
+      // 1. Créer la commande dans la base de données
       const orderData = {
         userId: user.id,
         packageId: selectedPackage.id,
@@ -141,16 +146,11 @@ export default function QRStorePageNew() {
   
       const order = await formService.createQROrder(orderData);
       console.log("✅ Commande créée:", order.id);
-  
-      // TODO: Intégrer le système de paiement réel (Stripe, PayPal, etc.)
-      // Simulation du paiement pour le moment
-      await new Promise(resolve => setTimeout(resolve, 2000));
-  
-      // Passer à l'étape de confirmation
-      setCurrentStep(5);
       
-      // Envoyer un email de confirmation (optionnel)
-      // await sendConfirmationEmail(order.id);
+      setCurrentOrder(order);
+      
+      // 2. Ouvrir le modal de paiement
+      setShowPaymentModal(true);
   
     } catch (error) {
       console.error("❌ Erreur lors de la commande:", error);
@@ -159,6 +159,28 @@ export default function QRStorePageNew() {
       setIsProcessing(false);
     }
   };
+  
+  // Ajouter ces fonctions de callback :
+  
+  const handlePaymentSuccess = async (transaction) => {
+    console.log("✅ Paiement réussi:", transaction);
+    
+    // Passer à l'étape de confirmation
+    setCurrentStep(5);
+    setShowPaymentModal(false);
+    
+    // Optionnel : Recharger la commande mise à jour
+    // const updatedOrder = await formService.getUserOrders(user.id);
+  };
+  
+  const handlePaymentError = (error) => {
+    console.error("❌ Erreur paiement:", error);
+    alert("Le paiement a échoué. Veuillez réessayer.");
+    setShowPaymentModal(false);
+  };
+  
+  // AJOUTER à la fin du JSX (avant la fermeture du dernier </div>) :
+  
   
 
   const totalPrice = selectedPackage?.price || 0;
@@ -819,6 +841,25 @@ export default function QRStorePageNew() {
               </div>
             </motion.div>
           )}
+
+          {/* Payment Modal */}
+  {showPaymentModal && currentOrder && (
+    <PaymentModal
+      isOpen={showPaymentModal}
+      onClose={() => setShowPaymentModal(false)}
+      amount={currentOrder.total_price}
+      description={`Commande QR - ${currentOrder.package_name} (${currentOrder.quantity} QR codes)`}
+      customerInfo={{
+        email: currentOrder.email,
+        name: currentOrder.full_name,
+        phone: currentOrder.phone,
+      }}
+      orderId={`qr-${currentOrder.id}`}
+      orderType="qr_order"
+      onSuccess={handlePaymentSuccess}
+      onError={handlePaymentError}
+    />
+  )}
         </AnimatePresence>
       </div>
     </div>

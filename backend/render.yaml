@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: neonx-backend
+    env: node
+    region: frankfurt  # ou oregon, singapore selon votre localisation
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: 20.19.0
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: STREAM_API_KEY
+        sync: false
+      - key: STREAM_API_SECRET
+        sync: false
+      - key: PAYUNIT_API_KEY
+        sync: false
+      - key: PAYUNIT_USERNAME
+        sync: false
+      - key: PAYUNIT_PASSWORD
+        sync: false
+      - key: PAYUNIT_MODE
+        value: live
+      - key: FRONTEND_URL
+        sync: false
+      - key: BACKEND_URL
+        sync: false
