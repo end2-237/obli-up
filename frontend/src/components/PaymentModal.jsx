@@ -5,10 +5,8 @@ import { X, CreditCard, Loader2, AlertCircle, ExternalLink, Check } from "lucide
 import { payunitService } from "../services/payunitService";
 
 const PAYMENT_METHODS = [
-  { id: "orange_money_cm", name: "Orange Money", icon: "🟠", color: "orange" },
-  { id: "mtn_cm", name: "MTN Mobile Money", icon: "🟡", color: "yellow" },
-  { id: "moov_cm", name: "Moov Money", icon: "🔵", color: "blue" },
-  { id: "card", name: "Carte Bancaire", icon: "💳", color: "gray" },
+  { id: "CM_ORANGE", name: "Orange Money", icon: "🟠", color: "orange" },
+  { id: "CM_MTN", name: "MTN Mobile Money", icon: "🟡", color: "yellow" }
 ];
 
 export default function PaymentModal({
