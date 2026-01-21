@@ -63,7 +63,7 @@ async function initiatePayUnitPayment(paymentData) {
 
     // Mapper les méthodes de paiement vers les gateways PayUnit
     const gatewayMap = {
-      "CM_ORANGE": "CM_ORANGEMOMO",
+      "CM_ORANGE": "CM_ORANGE",
       "CM_MTN": "CM_MTNMOMO",
     };
 
