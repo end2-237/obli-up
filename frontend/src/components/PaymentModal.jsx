@@ -1,8 +1,15 @@
 // frontend/src/components/PaymentModal.jsx
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, CreditCard, Loader2, CheckCircle, AlertCircle, ExternalLink } from "lucide-react";
+import { X, CreditCard, Loader2, AlertCircle, ExternalLink, Check } from "lucide-react";
 import { payunitService } from "../services/payunitService";
+
+const PAYMENT_METHODS = [
+  { id: "orange_money_cm", name: "Orange Money", icon: "🟠", color: "orange" },
+  { id: "mtn_cm", name: "MTN Mobile Money", icon: "🟡", color: "yellow" },
+  { id: "moov_cm", name: "Moov Money", icon: "🔵", color: "blue" },
+  { id: "card", name: "Carte Bancaire", icon: "💳", color: "gray" },
+];
 
 export default function PaymentModal({
   isOpen,
@@ -12,15 +19,21 @@ export default function PaymentModal({
   onSuccess,
   onError,
   customerInfo,
-  orderType = "qr_order", // 'qr_order', 'item_verification', 'other'
+  orderType = "qr_order",
   orderId,
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [paymentUrl, setPaymentUrl] = useState(null);
   const [transactionId, setTransactionId] = useState(null);
+  const [selectedMethod, setSelectedMethod] = useState(null);
 
   const handlePayment = async () => {
+    if (!selectedMethod) {
+      setError("Veuillez sélectionner une méthode de paiement");
+      return;
+    }
+
     setLoading(true);
     setError("");
 
@@ -29,11 +42,9 @@ export default function PaymentModal({
         amount: amount,
         currency: "XAF",
         description: description,
-        customerEmail: customerInfo.email,
-        customerName: customerInfo.name,
-        customerPhone: customerInfo.phone,
         orderId: orderId,
-        orderType: orderType
+        orderType: orderType,
+        paymentMethod: selectedMethod, // Ajouter la méthode de paiement
       };
 
       const result = await payunitService.initiatePayment(paymentData);
@@ -103,7 +114,7 @@ export default function PaymentModal({
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
-          className="glass rounded-2xl p-6 max-w-md w-full"
+          className="glass rounded-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
@@ -137,6 +148,35 @@ export default function PaymentModal({
               </div>
             </div>
 
+            {/* Sélection de la méthode de paiement */}
+            <div className="glass rounded-xl p-4">
+              <div className="text-sm font-semibold mb-3">Choisissez votre méthode de paiement</div>
+              <div className="grid grid-cols-2 gap-2">
+                {PAYMENT_METHODS.map((method) => (
+                  <button
+                    key={method.id}
+                    onClick={() => setSelectedMethod(method.id)}
+                    disabled={loading}
+                    className={`relative p-3 rounded-xl border-2 transition-all ${
+                      selectedMethod === method.id
+                        ? "border-primary bg-primary/10"
+                        : "border-border hover:border-primary/50 bg-muted/50"
+                    } disabled:opacity-50 disabled:cursor-not-allowed`}
+                  >
+                    <div className="flex flex-col items-center gap-2">
+                      <span className="text-2xl">{method.icon}</span>
+                      <span className="text-xs font-medium text-center">{method.name}</span>
+                    </div>
+                    {selectedMethod === method.id && (
+                      <div className="absolute top-2 right-2 w-5 h-5 bg-primary rounded-full flex items-center justify-center">
+                        <Check size={14} className="text-primary-foreground" />
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Informations client */}
             <div className="glass rounded-xl p-4 space-y-2 text-sm">
               <div className="flex justify-between">
@@ -154,21 +194,6 @@ export default function PaymentModal({
                 </div>
               )}
             </div>
-
-            {/* Méthodes de paiement supportées */}
-            <div className="glass rounded-xl p-4">
-              <div className="text-sm font-semibold mb-3">Méthodes de paiement acceptées</div>
-              <div className="flex flex-wrap gap-2">
-                {["Orange Money", "MTN Mobile Money", "Moov Money", "Carte Bancaire"].map((method) => (
-                  <div
-                    key={method}
-                    className="px-3 py-1.5 bg-muted rounded-lg text-xs font-medium"
-                  >
-                    {method}
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
 
           {/* Erreur */}
@@ -183,7 +208,7 @@ export default function PaymentModal({
           <div className="space-y-3">
             <button
               onClick={handlePayment}
-              disabled={loading}
+              disabled={loading || !selectedMethod}
               className="w-full px-6 py-4 bg-primary text-primary-foreground rounded-xl font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {loading ? (

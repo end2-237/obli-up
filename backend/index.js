@@ -55,12 +55,12 @@ async function initiatePayUnitPayment(paymentData) {
       description,
       callbackUrl,
       returnUrl,
+      paymentMethod, // orange_money_cm, mtn_cm, etc.
     } = paymentData;
 
     console.log("📤 Initialisation paiement PayUnit SDK...");
 
-    // Utiliser le SDK officiel PayUnit comme dans l'exemple
-    const paymentRequest = await payunitClient.collections.initiatePayment({
+    const payload = {
       total_amount: parseInt(amount),
       currency: currency,
       description: description || "Paiement",
@@ -68,7 +68,17 @@ async function initiatePayUnitPayment(paymentData) {
       return_url: returnUrl,
       notify_url: callbackUrl,
       payment_country: "CM",
-    });
+    };
+
+    // Ajouter le gateway si spécifié
+    if (paymentMethod) {
+      payload.pay_with = paymentMethod;
+    }
+
+    console.log("📦 Payload PayUnit:", payload);
+
+    // Utiliser le SDK officiel PayUnit
+    const paymentRequest = await payunitClient.collections.initiatePayment(payload);
 
     console.log("✅ Réponse PayUnit SDK:", paymentRequest);
 
@@ -159,6 +169,7 @@ app.post("/payunit/init", async (req, res) => {
       description,
       orderId,
       orderType, // 'qr_order', 'item_verification'
+      paymentMethod, // 'orange_money_cm', 'mtn_cm', etc.
     } = req.body;
 
     // Validation

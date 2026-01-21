@@ -1,7 +1,7 @@
 // frontend/src/services/payunitService.js
 import { supabase } from "../lib/supabase";
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "https://obli-up.onrender.com";
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
 
 export const payunitService = {
   /**
@@ -15,6 +15,7 @@ export const payunitService = {
         description,
         orderId,
         orderType, // 'qr_order', 'item_verification'
+        paymentMethod, // 'orange_money_cm', 'mtn_cm', 'moov_cm', etc.
       } = paymentData;
 
       // Validation
@@ -35,6 +36,7 @@ export const payunitService = {
         currency,
         orderId,
         orderType,
+        paymentMethod,
       });
 
       // Récupérer le token d'authentification
@@ -57,6 +59,7 @@ export const payunitService = {
           description,
           orderId,
           orderType,
+          paymentMethod, // Envoyer la méthode de paiement
         }),
       });
 
