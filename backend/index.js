@@ -51,74 +51,73 @@ async function initiatePayUnitPayment(paymentData) {
     const {
       transactionId,
       amount,
-      currency = "XAF",
       description,
       callbackUrl,
-      returnUrl,
       pay_with,
       phoneNumber,
+      orderType,
     } = paymentData;
 
-    console.log("📤 Initialisation paiement Mobile Money PayUnit SDK...");
-
-    // Mapper les méthodes de paiement vers les gateways PayUnit
     const gatewayMap = {
-      "CM_ORANGE": "CM_ORANGE",
-      "CM_MTN": "CM_MTNMOMO",
+      CM_ORANGE: "CM_ORANGE",
+      CM_MTN: "CM_MTNMOMO",
     };
 
-    const gateway = gatewayMap[pay_with] || "CM_ORANGEMOMO";
+    const gateway = gatewayMap[pay_with];
 
-    // Validation du numéro de téléphone
-    if (!phoneNumber) {
-      throw new Error("Numéro de téléphone requis pour Mobile Money");
+    if (!gateway) {
+      throw new Error("Gateway PayUnit invalide");
     }
 
-    // Nettoyer le numéro (retirer espaces, +237, etc.)
-    const cleanPhone = phoneNumber.replace(/[\s\+]/g, "").replace(/^237/, "");
-    
+    if (!phoneNumber) {
+      throw new Error("Numéro de téléphone requis");
+    }
+
+    const cleanPhone = phoneNumber.replace(/[\s+]/g, "").replace(/^237/, "");
+
     if (cleanPhone.length !== 9) {
-      throw new Error("Numéro de téléphone invalide (doit contenir 9 chiffres)");
+      throw new Error("Numéro CM invalide");
     }
 
     const payload = {
       total_amount: parseInt(amount),
-      currency: currency,
+      currency: "XAF",
       transaction_id: transactionId,
-      gateway: gateway,
+      gateway,
       phone_number: cleanPhone,
-      return_url: returnUrl,
       notify_url: callbackUrl,
       payment_country: "CM",
-      redirect_on_failed: "yes",
       custom_fields: {
-        description: description || "Paiement",
-        order_type: paymentData.orderType || "order",
+        description,
+        order_type: orderType,
       },
     };
 
-    console.log("📦 Payload PayUnit Mobile Money:", {
+    console.log("📦 Payload PayUnit FINAL:", {
       ...payload,
       phone_number: `***${cleanPhone.slice(-4)}`,
     });
 
-    // Utiliser la méthode Mobile Money directe
-    const paymentRequest = await payunitClient.collections.initiateAndMakePaymentMobileMoney(payload);
+    const res =
+      await payunitClient.collections.initiateAndMakePaymentMobileMoney(payload);
 
-    console.log("✅ Réponse PayUnit Mobile Money:", paymentRequest);
+    console.log("✅ PayUnit PUSH envoyé");
 
     return {
-      reference: paymentRequest?.transaction_id || transactionId,
-      payment_url: paymentRequest.payment_url || paymentRequest.url,
-      status: paymentRequest.transaction_status || "pending",
-      message: paymentRequest.message,
-      data: paymentRequest,
+      reference: transactionId,
+      status: res.transaction_status || "pending",
+      message: res.message,
+      data: res,
     };
   } catch (error) {
-    console.error("❌ Erreur initiatePayUnitPayment:", error.response?.data || error.message);
+    console.error(
+      "❌ Erreur initiatePayUnitPayment:",
+      error.response?.data || error.message
+    );
     throw error;
   }
 }
+
 
 /**
  * Vérifier le statut d'un paiement PayUnit
