@@ -31,10 +31,10 @@ export default function PaymentModal({
       setError("Veuillez sélectionner une méthode de paiement");
       return;
     }
-
+  
     setLoading(true);
     setError("");
-
+  
     try {
       const paymentData = {
         amount: amount,
@@ -42,53 +42,24 @@ export default function PaymentModal({
         description: description,
         orderId: orderId,
         orderType: orderType,
-        paymentMethod: selectedMethod, // Ajouter la méthode de paiement
+        gateway: selectedMethod, 
       };
-
+  
       const result = await payunitService.initiatePayment(paymentData);
-
-      setPaymentUrl(result.paymentUrl);
+  
       setTransactionId(result.transactionId);
+      setPaymentUrl(result.paymentUrl); 
 
-      // Ouvrir PayUnit dans une nouvelle fenêtre
-      const paymentWindow = window.open(
-        result.paymentUrl,
-        "PayUnit",
-        "width=600,height=700,scrollbars=yes"
-      );
-
-      // Vérifier périodiquement si le paiement est terminé
-      const checkInterval = setInterval(async () => {
-        if (paymentWindow.closed) {
-          clearInterval(checkInterval);
-          
-          // Vérifier le statut de la transaction
-          try {
-            const transaction = await payunitService.checkTransactionStatus(result.transactionId);
-            
-            if (transaction.status === "success") {
-              onSuccess(transaction);
-              onClose();
-            } else if (transaction.status === "failed" || transaction.status === "cancelled") {
-              setError("Le paiement a échoué ou a été annulé");
-            }
-          } catch (err) {
-            console.error("Erreur vérification:", err);
-          }
-          
-          setLoading(false);
-        }
-      }, 1000);
-
-      // Timeout après 10 minutes
-      setTimeout(() => {
-        clearInterval(checkInterval);
-        if (!paymentWindow.closed) {
-          paymentWindow.close();
-        }
-        setLoading(false);
-      }, 600000);
-
+      const transaction = await payunitService.checkTransactionStatus(result.transactionId);
+  
+      if (transaction.status === "success") {
+        onSuccess(transaction);
+        onClose();
+      } else if (transaction.status === "failed" || transaction.status === "cancelled") {
+        setError("Le paiement a échoué ou a été annulé");
+      }
+  
+      setLoading(false);
     } catch (err) {
       console.error("Erreur paiement:", err);
       setError(err.message || "Une erreur est survenue lors du paiement");
@@ -96,6 +67,7 @@ export default function PaymentModal({
       if (onError) onError(err);
     }
   };
+  
 
   if (!isOpen) return null;
 

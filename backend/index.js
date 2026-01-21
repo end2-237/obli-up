@@ -55,7 +55,7 @@ async function initiatePayUnitPayment(paymentData) {
       description,
       callbackUrl,
       returnUrl,
-      paymentMethod, // orange_money_cm, mtn_cm, etc.
+      gateway,
     } = paymentData;
 
     console.log("📤 Initialisation paiement PayUnit SDK...");
@@ -70,9 +70,9 @@ async function initiatePayUnitPayment(paymentData) {
       payment_country: "CM",
     };
 
-    // Ajouter le gateway si spécifié
-    if (paymentMethod) {
-      payload.pay_with = paymentMethod;
+    
+    if (gateway) {
+      payload.pay_with = gateway;
     }
 
     console.log("📦 Payload PayUnit:", payload);

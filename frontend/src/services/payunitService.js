@@ -1,7 +1,8 @@
 // frontend/src/services/payunitService.js
 import { supabase } from "../lib/supabase";
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
+const BACKEND_URL =
+  import.meta.env.VITE_BACKEND_URL || "https://obli-up.onrender.com";
 
 export const payunitService = {
   /**
@@ -14,44 +15,51 @@ export const payunitService = {
         currency = "XAF",
         description,
         orderId,
-        orderType, // 'qr_order', 'item_verification'
-        paymentMethod, // 'orange_money_cm', 'mtn_cm', 'moov_cm', etc.
+        orderType,
+        gateway,
       } = paymentData;
-
+  
       // Validation
       if (!amount || amount <= 0) {
         throw new Error("Montant invalide");
       }
-
+  
       if (!orderId) {
         throw new Error("ID de commande requis");
       }
-
+  
       if (!orderType) {
         throw new Error("Type de commande requis");
       }
-
+  
+      if (!gateway) {
+        throw new Error("Méthode de paiement requise");
+      }
+  
       console.log("💳 Initialisation paiement:", {
         amount,
         currency,
         orderId,
         orderType,
-        paymentMethod,
+        gateway: "CM_ORANGE",
       });
-
+  
       // Récupérer le token d'authentification
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+  
       if (sessionError || !session) {
         throw new Error("Non authentifié. Veuillez vous connecter.");
       }
-
+  
       // Appeler le backend pour initialiser le paiement
       const response = await fetch(`${BACKEND_URL}/payunit/init`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           amount,
@@ -59,18 +67,20 @@ export const payunitService = {
           description,
           orderId,
           orderType,
-          paymentMethod, // Envoyer la méthode de paiement
+          paymentMethod,
         }),
       });
-
+  
       const result = await response.json();
-
+  
       if (!response.ok) {
-        throw new Error(result.error || "Erreur lors de l'initialisation du paiement");
+        throw new Error(
+          result.error || "Erreur lors de l'initialisation du paiement"
+        );
       }
-
+  
       console.log("✅ Paiement initialisé:", result);
-
+  
       return {
         transactionId: result.transactionId,
         paymentUrl: result.paymentUrl,
@@ -82,6 +92,7 @@ export const payunitService = {
       throw error;
     }
   },
+  
 
   /**
    * Vérifier le statut d'une transaction
@@ -92,8 +103,11 @@ export const payunitService = {
         throw new Error("ID de transaction requis");
       }
 
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+
       if (sessionError || !session) {
         throw new Error("Non authentifié");
       }
@@ -104,7 +118,7 @@ export const payunitService = {
         `${BACKEND_URL}/payunit/status/${transactionId}`,
         {
           headers: {
-            "Authorization": `Bearer ${session.access_token}`,
+            Authorization: `Bearer ${session.access_token}`,
           },
         }
       );
@@ -112,7 +126,9 @@ export const payunitService = {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || "Erreur lors de la vérification du paiement");
+        throw new Error(
+          result.error || "Erreur lors de la vérification du paiement"
+        );
       }
 
       console.log("📊 Statut transaction:", result.transaction?.status);
@@ -204,8 +220,11 @@ export const payunitService = {
    */
   async getTransactionHistory() {
     try {
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+
       if (sessionError || !session) {
         throw new Error("Non authentifié");
       }
@@ -234,8 +253,11 @@ export const payunitService = {
         throw new Error("ID de transaction requis");
       }
 
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+
       if (sessionError || !session) {
         throw new Error("Non authentifié");
       }
