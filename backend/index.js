@@ -44,16 +44,6 @@ const payunitClient = new PayunitClient({
 // ============================================
 
 /**
- * POST /payunit/init
- * Initialiser un paiement Mobile Money
- */
-// Dans votre backend/index.js, remplacez la section FONCTIONS PAYUNIT par ceci :
-
-// ============================================
-// FONCTIONS PAYUNIT
-// ============================================
-
-/**
  * Initialiser un paiement Mobile Money PayUnit (direct)
  */
 async function initiatePayUnitPayment(paymentData) {
@@ -66,7 +56,7 @@ async function initiatePayUnitPayment(paymentData) {
       callbackUrl,
       returnUrl,
       pay_with,
-      phoneNumber, // Numéro de téléphone du client
+      phoneNumber,
     } = paymentData;
 
     console.log("📤 Initialisation paiement Mobile Money PayUnit SDK...");
@@ -95,8 +85,8 @@ async function initiatePayUnitPayment(paymentData) {
       total_amount: parseInt(amount),
       currency: currency,
       transaction_id: transactionId,
-      gateway: gateway, // CM_ORANGEMOMO ou CM_MTNMOMO
-      phone_number: cleanPhone, // 6XXXXXXXX (sans +237)
+      gateway: gateway,
+      phone_number: cleanPhone,
       return_url: returnUrl,
       notify_url: callbackUrl,
       payment_country: "CM",
@@ -109,7 +99,7 @@ async function initiatePayUnitPayment(paymentData) {
 
     console.log("📦 Payload PayUnit Mobile Money:", {
       ...payload,
-      phone_number: `***${cleanPhone.slice(-4)}`, // Masquer le numéro dans les logs
+      phone_number: `***${cleanPhone.slice(-4)}`,
     });
 
     // Utiliser la méthode Mobile Money directe
@@ -117,7 +107,6 @@ async function initiatePayUnitPayment(paymentData) {
 
     console.log("✅ Réponse PayUnit Mobile Money:", paymentRequest);
 
-    // La réponse contient le statut du paiement
     return {
       reference: paymentRequest?.transaction_id || transactionId,
       payment_url: paymentRequest.payment_url || paymentRequest.url,
@@ -138,7 +127,6 @@ async function checkPayUnitStatus(transactionId) {
   try {
     console.log("🔍 Vérification statut PayUnit SDK:", transactionId);
 
-    // Utiliser la méthode du SDK pour vérifier le statut
     const result = await payunitClient.collections.getTransactionStatus({
       transaction_id: transactionId,
     });
@@ -175,6 +163,64 @@ function mapPayUnitStatus(payunitStatus) {
   return statusMap[payunitStatus?.toLowerCase()] || "pending";
 }
 
+/**
+ * Actions à effectuer après un paiement réussi
+ */
+async function handlePaymentSuccess(transaction) {
+  try {
+    console.log("🎉 Paiement réussi pour:", transaction.id);
+
+    const orderIdParts = transaction.order_id.split("-");
+    const orderType = orderIdParts[0];
+
+    if (orderType === "qr") {
+      const orderId = orderIdParts[1];
+      await supabase
+        .from("qr_orders")
+        .update({
+          payment_status: "paid",
+          status: "processing",
+          paid_at: new Date().toISOString(),
+        })
+        .eq("id", orderId);
+
+      console.log("✅ Commande QR mise à jour:", orderId);
+
+    } else if (orderType === "verification") {
+      const itemId = orderIdParts[1];
+      const userId = orderIdParts[2];
+
+      const { error } = await supabase
+        .from("item_access")
+        .insert([
+          {
+            item_id: itemId,
+            user_id: userId,
+            transaction_id: transaction.id,
+            granted_at: new Date().toISOString(),
+          },
+        ]);
+
+      if (error && error.code !== "23505") {
+        console.error("❌ Erreur item_access:", error);
+      } else {
+        console.log("✅ Accès item accordé:", itemId, "→", userId);
+      }
+    }
+
+  } catch (error) {
+    console.error("❌ Erreur handlePaymentSuccess:", error);
+  }
+}
+
+// ============================================
+// ROUTES PAYUNIT
+// ============================================
+
+/**
+ * POST /payunit/init
+ * Initialiser un paiement Mobile Money
+ */
 app.post("/payunit/init", async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
@@ -195,9 +241,9 @@ app.post("/payunit/init", async (req, res) => {
       currency,
       description,
       orderId,
-      orderType, // 'qr_order', 'item_verification'
-      pay_with, // 'CM_ORANGE', 'CM_MTN'
-      phoneNumber, // Numéro de téléphone Mobile Money
+      orderType,
+      pay_with,
+      phoneNumber,
     } = req.body;
 
     // Validation
@@ -229,7 +275,6 @@ app.post("/payunit/init", async (req, res) => {
           customer_phone: phoneNumber,
           description: description,
           status: "pending",
-          payment_method: pay_with,
         },
       ])
       .select()
@@ -250,12 +295,9 @@ app.post("/payunit/init", async (req, res) => {
       amount: amount,
       currency: currency || "XAF",
       description: description || `Paiement ${orderType}`,
-      customerEmail: user.email,
-      customerName: user.user_metadata?.name || user.email.split("@")[0],
       phoneNumber: phoneNumber,
       callbackUrl: `${backendUrl}/payunit/callback`,
       returnUrl: `${FRONTEND_URL}/payment/success?tx=${transaction.id}`,
-      cancelUrl: `${FRONTEND_URL}/payment/cancel?tx=${transaction.id}`,
       pay_with: pay_with,
       orderType: orderType,
     });
@@ -285,157 +327,6 @@ app.post("/payunit/init", async (req, res) => {
       reference: payunitResponse.reference,
       status: payunitResponse.status,
       message: payunitResponse.message,
-    });
-
-  } catch (error) {
-    console.error("❌ Erreur /payunit/init:", error);
-    return res.status(500).json({
-      error: error.message || "Internal server error",
-    });
-  }
-});
-
-/**
- * Vérifier le statut d'un paiement PayUnit
- */
-async function checkPayUnitStatus(transactionId) {
-  try {
-    console.log("🔍 Vérification statut PayUnit SDK:", transactionId);
-
-    // Utiliser la méthode du SDK pour vérifier le statut
-    const result = await payunitClient.collections.getTransactionStatus({
-      transaction_id: transactionId,
-    });
-    
-    console.log("📊 Statut PayUnit:", result);
-
-    return {
-      status: result.transaction_status || result.status,
-      ...result,
-    };
-  } catch (error) {
-    console.error("❌ Erreur checkPayUnitStatus:", error.response?.data || error.message);
-    throw error;
-  }
-}
-
-/**
- * Mapper le statut PayUnit vers notre système
- */
-function mapPayUnitStatus(payunitStatus) {
-  const statusMap = {
-    "successful": "success",
-    "success": "success",
-    "completed": "success",
-    "paid": "success",
-    "pending": "pending",
-    "processing": "pending",
-    "initiated": "pending",
-    "failed": "failed",
-    "cancelled": "cancelled",
-    "canceled": "cancelled",
-    "expired": "expired",
-  };
-  return statusMap[payunitStatus?.toLowerCase()] || "pending";
-}
-
-// ============================================
-// ROUTES PAYUNIT
-// ============================================
-
-/**
- * POST /payunit/init
- * Initialiser un paiement
- */
-app.post("/payunit/init", async (req, res) => {
-  try {
-    const authHeader = req.headers.authorization;
-    
-    if (!authHeader) {
-      return res.status(401).json({ error: "Missing authorization header" });
-    }
-
-    const jwt = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: authError } = await supabase.auth.getUser(jwt);
-
-    if (authError || !user) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
-
-    const {
-      amount,
-      currency,
-      description,
-      orderId,
-      orderType, // 'qr_order', 'item_verification'
-      paymentMethod, // 'orange_money_cm', 'mtn_cm', etc.
-    } = req.body;
-
-    // Validation
-    if (!amount || !orderId || !orderType) {
-      return res.status(400).json({ error: "Missing required fields" });
-    }
-
-    console.log("💳 Initialisation paiement pour:", user.email);
-
-    // 1. Créer la transaction dans Supabase
-    const { data: transaction, error: txError } = await supabase
-      .from("transactions")
-      .insert([
-        {
-          order_id: orderId,
-          order_type: orderType,
-          amount: amount,
-          currency: currency || "XAF",
-          customer_email: user.email,
-          customer_name: user.user_metadata?.name || user.email.split("@")[0],
-          customer_phone: user.user_metadata?.phone || "",
-          description: description,
-          status: "pending",
-        },
-      ])
-      .select()
-      .single();
-
-    if (txError) {
-      console.error("❌ Erreur création transaction:", txError);
-      return res.status(500).json({ error: "Failed to create transaction" });
-    }
-
-    console.log("✅ Transaction créée:", transaction.id);
-
-    // 2. Initialiser le paiement PayUnit
-    const backendUrl = process.env.BACKEND_URL || `${req.protocol}://${req.get('host')}`;
-    
-    const payunitResponse = await initiatePayUnitPayment({
-      transactionId: transaction.id,
-      amount: amount,
-      currency: currency || "XAF",
-      description: description || `Paiement ${orderType}`,
-      customerEmail: user.email,
-      customerName: user.user_metadata?.name || user.email.split("@")[0],
-      customerPhone: user.user_metadata?.phone || "",
-      callbackUrl: `${backendUrl}/payunit/callback`,
-      returnUrl: `${FRONTEND_URL}/payment/success?tx=${transaction.id}`,
-      cancelUrl: `${FRONTEND_URL}/payment/cancel?tx=${transaction.id}`,
-    });
-
-    // 3. Mettre à jour la transaction avec les infos PayUnit
-    await supabase
-      .from("transactions")
-      .update({
-        payunit_reference: payunitResponse.reference,
-        payunit_payment_url: payunitResponse.payment_url,
-        payunit_status: payunitResponse.status,
-      })
-      .eq("id", transaction.id);
-
-    // 4. Retourner les infos au client
-    return res.json({
-      success: true,
-      transactionId: transaction.id,
-      paymentUrl: payunitResponse.payment_url,
-      reference: payunitResponse.reference,
     });
 
   } catch (error) {
@@ -587,56 +478,6 @@ app.post("/payunit/callback", async (req, res) => {
     return res.status(500).json({ error: error.message });
   }
 });
-
-/**
- * Actions à effectuer après un paiement réussi
- */
-async function handlePaymentSuccess(transaction) {
-  try {
-    console.log("🎉 Paiement réussi pour:", transaction.id);
-
-    const orderIdParts = transaction.order_id.split("-");
-    const orderType = orderIdParts[0];
-
-    if (orderType === "qr") {
-      const orderId = orderIdParts[1];
-      await supabase
-        .from("qr_orders")
-        .update({
-          payment_status: "paid",
-          status: "processing",
-          paid_at: new Date().toISOString(),
-        })
-        .eq("id", orderId);
-
-      console.log("✅ Commande QR mise à jour:", orderId);
-
-    } else if (orderType === "verification") {
-      const itemId = orderIdParts[1];
-      const userId = orderIdParts[2];
-
-      const { error } = await supabase
-        .from("item_access")
-        .insert([
-          {
-            item_id: itemId,
-            user_id: userId,
-            transaction_id: transaction.id,
-            granted_at: new Date().toISOString(),
-          },
-        ]);
-
-      if (error && error.code !== "23505") {
-        console.error("❌ Erreur item_access:", error);
-      } else {
-        console.log("✅ Accès item accordé:", itemId, "→", userId);
-      }
-    }
-
-  } catch (error) {
-    console.error("❌ Erreur handlePaymentSuccess:", error);
-  }
-}
 
 // ============================================
 // ROUTES STREAM CHAT
