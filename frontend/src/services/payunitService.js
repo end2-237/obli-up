@@ -6,7 +6,7 @@ const BACKEND_URL =
 
 export const payunitService = {
   /**
-   * Initialiser un paiement via le backend
+   * Initialiser un paiement Mobile Money via le backend
    */
   async initiatePayment(paymentData) {
     try {
@@ -16,7 +16,8 @@ export const payunitService = {
         description,
         orderId,
         orderType,
-        pay_with = "CM_ORANGE",
+        pay_with,
+        phoneNumber,
       } = paymentData;
   
       // Validation
@@ -35,13 +36,24 @@ export const payunitService = {
       if (!pay_with) {
         throw new Error("Méthode de paiement requise");
       }
+
+      if (!phoneNumber) {
+        throw new Error("Numéro de téléphone requis");
+      }
+
+      // Valider le format du numéro
+      const cleanPhone = phoneNumber.replace(/[\s\+]/g, "").replace(/^237/, "");
+      if (!/^6\d{8}$/.test(cleanPhone)) {
+        throw new Error("Format de numéro invalide. Utilisez 6XXXXXXXX (9 chiffres)");
+      }
   
-      console.log("💳 Initialisation paiement:", {
+      console.log("💳 Initialisation paiement Mobile Money:", {
         amount,
         currency,
         orderId,
         orderType,
-        pay_with: "CM_ORANGE",
+        pay_with,
+        phone: `***${cleanPhone.slice(-4)}`, // Masquer dans les logs
       });
   
       // Récupérer le token d'authentification
@@ -67,7 +79,8 @@ export const payunitService = {
           description,
           orderId,
           orderType,
-          pay_with: "CM_ORANGE",
+          pay_with,
+          phoneNumber: cleanPhone,
         }),
       });
   
@@ -79,7 +92,7 @@ export const payunitService = {
         );
       }
   
-      console.log("✅ Paiement initialisé:", result);
+      console.log("✅ Paiement Mobile Money initialisé:", result);
   
       return {
         transactionId: result.transactionId,
@@ -92,9 +105,10 @@ export const payunitService = {
       throw error;
     }
   },
-  
 
-  
+  /**
+   * Vérifier le statut d'une transaction
+   */
   async checkTransactionStatus(transactionId) {
     try {
       if (!transactionId) {
@@ -141,9 +155,13 @@ export const payunitService = {
   /**
    * Créer un paiement pour une commande QR
    */
-  async createQROrderPayment(order) {
+  async createQROrderPayment(order, phoneNumber) {
     if (!order || !order.id || !order.total_price) {
       throw new Error("Données de commande invalides");
+    }
+
+    if (!phoneNumber) {
+      throw new Error("Numéro de téléphone requis");
     }
 
     const packageName = order.package_name || "Package QR";
@@ -155,13 +173,14 @@ export const payunitService = {
       description: `Commande QR - ${packageName} (${quantity} QR)`,
       orderId: `qr-${order.id}`,
       orderType: "qr_order",
+      phoneNumber: phoneNumber,
     });
   },
 
   /**
    * Créer un paiement pour débloquer un item
    */
-  async createItemVerificationPayment(item, user) {
+  async createItemVerificationPayment(item, user, phoneNumber) {
     if (!item || !item.id || !item.title) {
       throw new Error("Données de l'item invalides");
     }
@@ -170,12 +189,17 @@ export const payunitService = {
       throw new Error("Utilisateur non authentifié");
     }
 
+    if (!phoneNumber) {
+      throw new Error("Numéro de téléphone requis");
+    }
+
     return this.initiatePayment({
       amount: 500, // 500 FCFA
       currency: "XAF",
       description: `Déblocage item - ${item.title}`,
       orderId: `verification-${item.id}-${user.id}`,
       orderType: "item_verification",
+      phoneNumber: phoneNumber,
     });
   },
 
@@ -190,7 +214,6 @@ export const payunitService = {
 
       console.log("🔐 Vérification accès item:", itemId, "pour", userId);
 
-      // Vérifier d'abord dans la table item_access
       const { data, error } = await supabase
         .from("item_access")
         .select("*")

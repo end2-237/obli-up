@@ -1,7 +1,6 @@
-// frontend/src/components/PaymentModal.jsx
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, CreditCard, Loader2, AlertCircle, ExternalLink, Check } from "lucide-react";
+import { X, CreditCard, Loader2, AlertCircle, Check, Phone } from "lucide-react";
 import { payunitService } from "../services/payunitService";
 
 const PAYMENT_METHODS = [
@@ -22,18 +21,30 @@ export default function PaymentModal({
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [paymentUrl, setPaymentUrl] = useState(null);
   const [transactionId, setTransactionId] = useState(null);
   const [selectedMethod, setSelectedMethod] = useState(null);
+  const [phoneNumber, setPhoneNumber] = useState(customerInfo?.phone || "");
+  const [processingMessage, setProcessingMessage] = useState("");
+
+  const validatePhone = (phone) => {
+    const cleaned = phone.replace(/[\s\+]/g, "").replace(/^237/, "");
+    return /^6\d{8}$/.test(cleaned);
+  };
 
   const handlePayment = async () => {
     if (!selectedMethod) {
       setError("Veuillez sélectionner une méthode de paiement");
       return;
     }
+
+    if (!phoneNumber || !validatePhone(phoneNumber)) {
+      setError("Veuillez entrer un numéro de téléphone valide (ex: 6XXXXXXXX)");
+      return;
+    }
   
     setLoading(true);
     setError("");
+    setProcessingMessage("Initialisation du paiement...");
   
     try {
       const paymentData = {
@@ -42,32 +53,72 @@ export default function PaymentModal({
         description: description,
         orderId: orderId,
         orderType: orderType,
-        pay_with: selectedMethod, 
+        pay_with: selectedMethod,
+        phoneNumber: phoneNumber,
       };
   
       const result = await payunitService.initiatePayment(paymentData);
-  
+      
       setTransactionId(result.transactionId);
-      setPaymentUrl(result.paymentUrl); 
+      setProcessingMessage("Paiement en cours de traitement...");
 
+      // Attendre quelques secondes puis vérifier le statut
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      setProcessingMessage("Vérification du statut...");
       const transaction = await payunitService.checkTransactionStatus(result.transactionId);
   
       if (transaction.status === "success") {
+        setProcessingMessage("Paiement réussi !");
         onSuccess(transaction);
-        onClose();
+        setTimeout(() => onClose(), 1500);
       } else if (transaction.status === "failed" || transaction.status === "cancelled") {
-        setError("Le paiement a échoué ou a été annulé");
+        setError("Le paiement a échoué ou a été annulé. Veuillez réessayer.");
+        setLoading(false);
+      } else {
+        // Toujours en attente, continuer à vérifier
+        setProcessingMessage("En attente de confirmation. Vérifiez votre téléphone...");
+        pollTransactionStatus(result.transactionId);
       }
   
-      setLoading(false);
     } catch (err) {
       console.error("Erreur paiement:", err);
       setError(err.message || "Une erreur est survenue lors du paiement");
       setLoading(false);
+      setProcessingMessage("");
       if (onError) onError(err);
     }
   };
-  
+
+  const pollTransactionStatus = async (txId, attempts = 0) => {
+    if (attempts >= 20) { // Max 20 tentatives (60 secondes)
+      setError("Le délai de paiement a expiré. Veuillez vérifier votre transaction.");
+      setLoading(false);
+      setProcessingMessage("");
+      return;
+    }
+
+    try {
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      const transaction = await payunitService.checkTransactionStatus(txId);
+      
+      if (transaction.status === "success") {
+        setProcessingMessage("Paiement réussi !");
+        onSuccess(transaction);
+        setTimeout(() => onClose(), 1500);
+      } else if (transaction.status === "failed" || transaction.status === "cancelled") {
+        setError("Le paiement a échoué ou a été annulé.");
+        setLoading(false);
+        setProcessingMessage("");
+      } else {
+        // Continuer à vérifier
+        pollTransactionStatus(txId, attempts + 1);
+      }
+    } catch (err) {
+      console.error("Erreur vérification:", err);
+      pollTransactionStatus(txId, attempts + 1);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -147,6 +198,25 @@ export default function PaymentModal({
               </div>
             </div>
 
+            {/* Numéro de téléphone */}
+            <div className="glass rounded-xl p-4">
+              <label className="text-sm font-semibold mb-2 block">Numéro de téléphone Mobile Money</label>
+              <div className="relative">
+                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+                <input
+                  type="tel"
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  placeholder="6XXXXXXXX"
+                  disabled={loading}
+                  className="w-full pl-10 pr-4 py-3 bg-muted border border-border rounded-lg focus:border-primary focus:outline-none transition-colors disabled:opacity-50"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                Format: 6XXXXXXXX (9 chiffres, sans +237)
+              </p>
+            </div>
+
             {/* Informations client */}
             <div className="glass rounded-xl p-4 space-y-2 text-sm">
               <div className="flex justify-between">
@@ -157,14 +227,16 @@ export default function PaymentModal({
                 <span className="text-muted-foreground">Email</span>
                 <span className="font-semibold">{customerInfo.email}</span>
               </div>
-              {customerInfo.phone && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Téléphone</span>
-                  <span className="font-semibold">{customerInfo.phone}</span>
-                </div>
-              )}
             </div>
           </div>
+
+          {/* Message de traitement */}
+          {processingMessage && (
+            <div className="bg-blue-500/10 border border-blue-500/30 text-blue-400 rounded-xl p-4 mb-6 flex items-start gap-3">
+              <Loader2 className="animate-spin flex-shrink-0 mt-0.5" size={20} />
+              <div className="text-sm">{processingMessage}</div>
+            </div>
+          )}
 
           {/* Erreur */}
           {error && (
@@ -178,7 +250,7 @@ export default function PaymentModal({
           <div className="space-y-3">
             <button
               onClick={handlePayment}
-              disabled={loading || !selectedMethod}
+              disabled={loading || !selectedMethod || !phoneNumber}
               className="w-full px-6 py-4 bg-primary text-primary-foreground rounded-xl font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {loading ? (
@@ -193,18 +265,6 @@ export default function PaymentModal({
                 </>
               )}
             </button>
-
-            {paymentUrl && (
-              <a
-                href={paymentUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block text-center text-sm text-primary hover:underline flex items-center justify-center gap-1"
-              >
-                Ouvrir à nouveau la page de paiement
-                <ExternalLink size={14} />
-              </a>
-            )}
 
             <button
               onClick={onClose}
